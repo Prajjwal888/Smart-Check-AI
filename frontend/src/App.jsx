@@ -13,6 +13,7 @@ import StudentFeedback from "./pages/student/Feedback";
 import Practice from "./pages/student/Practice";
 import { AppProvider } from "./context/AppContext";
 import QuestionGeneration from "./pages/teacher/QuestionGeneration";
+import LoginPage from "./pages/LoginPage";
 
 function App() {
   const [userRole] = useState("teacher");
@@ -24,14 +25,7 @@ function App() {
           <Route
             path="/"
             element={
-              <Navigate
-                to={
-                  userRole === "teacher"
-                    ? "/teacher/dashboard"
-                    : "/student/dashboard"
-                }
-                replace
-              />
+              <LoginPage/>
             }
           />
 
