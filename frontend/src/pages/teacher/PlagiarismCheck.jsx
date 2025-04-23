@@ -1,131 +1,248 @@
-import { useState } from 'react';
-import { Upload, X, AlertTriangle, FileText, BarChart } from 'lucide-react';
-import FileUploader from '../../components/plagiarism/FileUploader';
-import SimilarityReport from '../../components/plagiarism/SimilarityReport';
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { BarChart, AlertTriangle, FileText, Loader2 } from "lucide-react";
 
 export default function PlagiarismCheck() {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [result, setResult] = useState(null);
-  const [uploadedFile, setUploadedFile] = useState(null);
+  const [assignments, setAssignments] = useState([]);
+  const [selectedAssignment, setSelectedAssignment] = useState("");
+  const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState({
+    assignments: false,
+    submissions: false,
+    checkingAll: false,
+  });
+  const [error, setError] = useState(null);
 
-  const handleFileUpload = (file) => {
-    setUploadedFile({
-      name: file.name,
-      type: file.type,
-      size: file.size,
-    });
+  // Fetch assignments created by the current teacher
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      setLoading((prev) => ({ ...prev, assignments: true }));
+      setError(null);
+      try {
+        const res = await axios.get("http://localhost:5000/api/getAssignments");
+        setAssignments(res.data?.assignments || []);
+      } catch (err) {
+        setError("Failed to load assignments");
+        console.error("Error fetching assignments", err);
+        setAssignments([]);
+      } finally {
+        setLoading((prev) => ({ ...prev, assignments: false }));
+      }
+    };
+    fetchAssignments();
+  }, []);
 
-    setIsProcessing(true);
-    setResult(null);
+  // Fetch submissions when assignment is selected
+  useEffect(() => {
+    const fetchSubmissions = async () => {
+      if (!selectedAssignment) {
+        setSubmissions([]);
+        return;
+      }
 
-    // Simulate API call
-    setTimeout(() => {
-      const isPlagiarized = file.name.toLowerCase().includes('plagiarized');
+      setLoading((prev) => ({ ...prev, submissions: true }));
+      setError(null);
+      try {
+        const res = await axios.get(`http://localhost:5000/api/getSubmissions/${selectedAssignment}`);
+        setSubmissions(res.data);
+      } catch (err) {
+        setError("Failed to load submissions");
+        console.error("Error fetching submissions", err);
+      } finally {
+        setLoading((prev) => ({ ...prev, submissions: false }));
+      }
+    };
 
-      setIsProcessing(false);
-      setResult({
-        score: isPlagiarized ? 72 : 15,
-        matches: [
-          {
-            text: "The mitochondria is the powerhouse of the cell, responsible for cellular respiration and energy production through ATP synthesis.",
-            similarity: isPlagiarized ? 95 : 40,
-            source: "Biology textbook (Smith et al., 2023)",
-          },
-          {
-            text: "These organelles convert nutrients into energy through a process called oxidative phosphorylation, which occurs along the inner mitochondrial membrane.",
-            similarity: isPlagiarized ? 82 : 25,
-            source: "ScienceDirect.com article #24601",
-          },
-          {
-            text: "Different cell types have different numbers of mitochondria based on their energy needs, with muscle cells containing many more than other cell types.",
-            similarity: isPlagiarized ? 67 : 10,
-            source: "Educational resource: CellBiology.edu",
-          },
-        ],
-      });
-    }, 3000);
+    fetchSubmissions();
+  }, [selectedAssignment]);
+
+  const handleCheckAllPlagiarism = async () => {
+    if (!selectedAssignment) return;
+    
+    setLoading((prev) => ({ ...prev, checkingAll: true }));
+    setError(null);
+    
+    try {
+      const res = await axios.post(
+        `http://localhost:5000/api/checkPlagiarism/${selectedAssignment}`
+      );
+      
+      setSubmissions((prev) =>
+        prev.map((sub) => {
+          const updatedSub = res.data.find((s) => s._id === sub._id);
+          return updatedSub || sub;
+        })
+      );
+    } catch (err) {
+      setError("Plagiarism check failed");
+      console.error("Error checking plagiarism", err);
+    } finally {
+      setLoading((prev) => ({ ...prev, checkingAll: false }));
+    }
   };
 
-  const resetCheck = () => {
-    setUploadedFile(null);
-    setResult(null);
-    setIsProcessing(false);
-  };
+  // Check if there are any pending submissions
+  const hasPendingSubmissions = submissions.some(
+    (sub) => sub.status === "pending"
+  );
 
   return (
-    <div className="animate-fade-in">
-      <div className="mb-6">
+    <div className="container mx-auto p-4 animate-fade-in">
+      <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Plagiarism Check</h1>
-        <p className="text-gray-600 mt-1">Analyze submissions for plagiarism and similar content</p>
+        <p className="text-gray-600 mt-1">
+          Check student submissions for potential plagiarism
+        </p>
       </div>
 
-      {!uploadedFile ? (
-        <FileUploader onFileUpload={handleFileUpload} />
-      ) : (
-        <div className="card p-5">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center">
-              <FileText className="text-gray-500 mr-2" size={20} />
-              <div>
-                <h3 className="font-medium">{uploadedFile.name}</h3>
-                <p className="text-sm text-gray-500">
-                  {Math.round(uploadedFile.size / 1024)} KB
-                </p>
-              </div>
-            </div>
-            <button onClick={resetCheck} className="p-1.5 rounded-full hover:bg-gray-100">
-              <X size={18} className="text-gray-500" />
-            </button>
-          </div>
-
-          {isProcessing ? (
-            <div className="py-10 text-center">
-              <div className="inline-block animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary-600 mb-4"></div>
-              <p className="text-gray-500">Analyzing document for plagiarism...</p>
-              <p className="text-sm text-gray-400 mt-2">This may take a moment</p>
-            </div>
-          ) : (
-            result && <SimilarityReport result={result} />
-          )}
+      {/* Error message */}
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
+          <p>{error}</p>
         </div>
       )}
 
-      {/* Best practices section */}
-      <div className="mt-8">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Plagiarism Detection Best Practices</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="card p-5 hover:shadow-md transition-shadow">
-            <div className="text-primary-500 mb-3">
-              <BarChart size={24} />
-            </div>
-            <h3 className="font-medium text-gray-900 mb-2">How It Works</h3>
-            <p className="text-sm text-gray-600">
-              Our AI compares submissions against a vast database of academic sources, previous assignments, and online content using advanced NLP algorithms.
-            </p>
-          </div>
-
-          <div className="card p-5 hover:shadow-md transition-shadow">
-            <div className="text-amber-500 mb-3">
-              <AlertTriangle size={24} />
-            </div>
-            <h3 className="font-medium text-gray-900 mb-2">What To Look For</h3>
-            <p className="text-sm text-gray-600">
-              Similarity scores above 30% may indicate potential plagiarism. Review matched sources and highlighted sections to make an informed assessment.
-            </p>
-          </div>
-
-          <div className="card p-5 hover:shadow-md transition-shadow">
-            <div className="text-green-500 mb-3">
-              <Upload size={24} />
-            </div>
-            <h3 className="font-medium text-gray-900 mb-2">Supported Formats</h3>
-            <p className="text-sm text-gray-600">
-              Upload documents in DOC, DOCX, PDF, or TXT formats. For code, we support Python, Java, C++, JavaScript and other major programming languages.
-            </p>
-          </div>
-        </div>
+      {/* Assignment selector */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Select Assignment
+        </label>
+        <select
+          className="w-full p-2 border rounded-md"
+          value={selectedAssignment}
+          onChange={(e) => setSelectedAssignment(e.target.value)}
+          disabled={loading.assignments}
+        >
+          <option value="">-- Choose an assignment --</option>
+          {Array.isArray(assignments) &&
+            assignments.map((assignment) => (
+              <option key={assignment._id} value={assignment._id}>
+                {assignment.title} - {assignment.course} ({assignment.subject})
+              </option>
+            ))}
+        </select>
       </div>
+
+      {/* Check All Button */}
+      {selectedAssignment && hasPendingSubmissions && (
+        <div className="mb-6">
+          <button
+            onClick={handleCheckAllPlagiarism}
+            disabled={loading.checkingAll}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+          >
+            {loading.checkingAll ? (
+              <>
+                <Loader2 className="animate-spin h-4 w-4" />
+                Checking All Submissions...
+              </>
+            ) : (
+              "Check All Pending Submissions for Plagiarism"
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {loading.submissions && (
+        <div className="flex justify-center items-center py-8">
+          <Loader2 className="animate-spin h-8 w-8 text-blue-500" />
+        </div>
+      )}
+
+      {/* Submissions list */}
+      <div className="space-y-4">
+        {submissions.map((submission) => (
+          <div
+            key={submission._id}
+            className="p-4 border rounded-lg bg-white shadow-sm"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
+              <div>
+                <h3 className="font-semibold text-lg">
+                  {submission.studentId?.name || "Unknown Student"}
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  {submission.studentId?.email || "No email"}
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:items-end gap-1">
+                <span
+                  className={`px-2 py-1 text-xs sm:text-sm rounded-md ${
+                    submission.status === "flagged"
+                      ? "bg-red-100 text-red-800"
+                      : submission.status === "evaluated"
+                      ? "bg-green-100 text-green-800"
+                      : submission.status === "late"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  {submission.status}
+                </span>
+                {submission.grade && (
+                  <span className="text-sm font-medium">
+                    Grade: {submission.grade}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 mb-3">
+              <FileText className="w-4 h-4" />
+              <a
+                href={submission.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline text-sm"
+              >
+                View Submission File
+              </a>
+            </div>
+
+            {/* Plagiarism info */}
+            {(submission.status === "flagged") && (
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <BarChart className="w-4 h-4" />
+                  Plagiarism Score: {submission.plagiarismScore}%
+                </div>
+                {submission.matchedStudents?.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-sm font-medium">Similar Submissions:</p>
+                    <ul className="list-disc list-inside pl-4">
+                      {submission.matchedStudents.map((student, index) => (
+                        <li key={index} className="text-sm">
+                          {student.name} ({student.email}) - {student.score}%
+                          match
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Status message for non-pending submissions */}
+            {["evaluated", "late"].includes(submission.status) && (
+              <div className="flex items-center gap-2 text-gray-500 text-sm">
+                <AlertTriangle className="w-4 h-4" />
+                <span>
+                  Plagiarism check not available for evaluated/late submissions
+                </span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Empty state */}
+      {!loading.submissions && submissions.length === 0 && selectedAssignment && (
+        <div className="text-center py-8 text-gray-500">
+          No submissions found for this assignment
+        </div>
+      )}
     </div>
   );
 }

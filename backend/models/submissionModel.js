@@ -15,11 +15,18 @@ const submissionSchema = new mongoose.Schema(
     fileUrl: { type: String, required: true },
     status: {
       type: String,
-      enum: ["pending", "flagged", "evaluated", "late"],
+      enum: ["pending", "checked", "flagged", "evaluated", "late"],
       default: "pending",
     },
     grade: { type: Number },
     plagiarismScore: { type: Number },
+    matchedWith: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+    ],
   },
   { timestamps: true }
 );

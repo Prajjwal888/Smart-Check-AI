@@ -7,7 +7,7 @@ export default function SimilarityReport({ result }) {
     return { level: 'high', color: 'red' };
   };
 
-  const severity = getSeverity(result.score);
+  const severity = getSeverity(result.plagiarismScore);
 
   const severityColors = {
     low: {
@@ -55,7 +55,7 @@ export default function SimilarityReport({ result }) {
                 : 'High similarity detected - potential plagiarism'}
             </h3>
             <p className="text-sm text-gray-700 mt-1">
-              This document has a {result.score}% similarity score with existing sources.
+              This document has a {result.plagiarismScore}% similarity score with existing sources.
               {severity.level === 'high' && ' Review is strongly recommended.'}
             </p>
           </div>
@@ -69,11 +69,11 @@ export default function SimilarityReport({ result }) {
           <div className="relative w-full h-6 bg-gray-200 rounded-full overflow-hidden">
             <div
               className={`absolute left-0 top-0 h-full ${severityColors[severity.level].progress}`}
-              style={{ width: `${result.score}%` }}
+              style={{ width: `${result.plagiarismScore}%` }}
             ></div>
           </div>
           <span className={`ml-3 text-lg font-semibold ${severityColors[severity.level].text}`}>
-            {result.score}%
+            {result.plagiarismScore}%
           </span>
         </div>
       </div>
@@ -82,23 +82,31 @@ export default function SimilarityReport({ result }) {
       <div>
         <h3 className="text-lg font-medium mb-4">Matched Content</h3>
         <div className="space-y-4">
-          {result.matches.map((match, index) => (
-            <div key={index} className="border rounded-lg overflow-hidden">
-              <div className="p-3 bg-gray-50 border-b flex justify-between items-center">
-                <div className="text-sm font-medium">Match #{index + 1}</div>
-                <div className={`px-2 py-1 rounded-full text-xs font-medium ${getSimilarityColors(match.similarity)}`}>
-                  {match.similarity}% Similar
+          {result.matches.length === 0 ? (
+            <div className="p-3 text-gray-500">No similar content found</div>
+          ) : (
+            result.matches.map((match, index) => (
+              <div key={index} className="border rounded-lg overflow-hidden">
+                <div className="p-3 bg-gray-50 border-b flex justify-between items-center">
+                  <div className="text-sm font-medium">Match #{index + 1}</div>
+                  <div
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${getSimilarityColors(
+                      match.similarity
+                    )}`}
+                  >
+                    {match.similarity}% Similar
+                  </div>
+                </div>
+                <div className="p-4">
+                  <p className="text-gray-700 text-sm mb-2 italic">"{match.text}"</p>
+                  <div className="flex items-center text-xs text-gray-500">
+                    <Info size={14} className="mr-1" />
+                    Source: {match.source}
+                  </div>
                 </div>
               </div>
-              <div className="p-4">
-                <p className="text-gray-700 text-sm mb-2 italic">"{match.text}"</p>
-                <div className="flex items-center text-xs text-gray-500">
-                  <Info size={14} className="mr-1" />
-                  Source: {match.source}
-                </div>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
