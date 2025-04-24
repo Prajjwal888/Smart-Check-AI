@@ -1,4 +1,3 @@
-# server.py
 import requests
 import string
 import re
@@ -87,8 +86,8 @@ async def check_plagiarism_endpoint(request_data: PlagiarismCheckRequest):
                 results.append({
                     "file1_index": i,
                     "file2_index": j,
-                    "similarity_score": round(float(similarity), 4),  # Convert to native float
-                    "is_plagiarised": bool(similarity >= threshold)    # Convert to native bool
+                    "similarity_score": round(float(similarity), 4),  
+                    "is_plagiarised": bool(similarity >= threshold)
                 })
         
         return {"results": results}

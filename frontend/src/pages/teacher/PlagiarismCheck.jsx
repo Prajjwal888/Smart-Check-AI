@@ -12,14 +12,21 @@ export default function PlagiarismCheck() {
     checkingAll: false,
   });
   const [error, setError] = useState(null);
-
+  const token = localStorage.getItem("token");
   // Fetch assignments created by the current teacher
   useEffect(() => {
     const fetchAssignments = async () => {
       setLoading((prev) => ({ ...prev, assignments: true }));
       setError(null);
       try {
-        const res = await axios.get("http://localhost:5000/api/getAssignments");
+        const res = await axios.get(
+          "http://localhost:5000/api/getAssignments",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         setAssignments(res.data?.assignments || []);
       } catch (err) {
         setError("Failed to load assignments");
@@ -43,7 +50,12 @@ export default function PlagiarismCheck() {
       setError(null);
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/getSubmissions/${selectedAssignment}`
+          `http://localhost:5000/api/getSubmissions/${selectedAssignment}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
         setSubmissions(res.data);
         console.log(submissions);
@@ -66,7 +78,12 @@ export default function PlagiarismCheck() {
 
     try {
       const res = await axios.post(
-        `http://localhost:5000/api/checkPlagiarism/${selectedAssignment}`
+        `http://localhost:5000/api/checkPlagiarism/${selectedAssignment}`,{},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
       const updatedSubs = res.data?.data?.submissions;

@@ -1,11 +1,10 @@
 import express from "express";
 import jwt from "jsonwebtoken";
-const authRoute = express.Router();
-const SECRET_KEY = "your_secret_key";
 import User from "../models/userModel.js";
 
+const authRoute = express.Router();
+const SECRET_KEY = process.env.SECRET_KEY;
 
-// 🔐 Login using ID + Password
 authRoute.post('/login', async(req, res) => {
     const { email, password, role } = req.body;
 
@@ -17,7 +16,7 @@ try {
       return res.status(401).json({ message: "Invalid ID, password, or role" });
     }
 
-    const token = jwt.sign({ email: user.email, role: user.role }, SECRET_KEY, {
+    const token = jwt.sign({ _id: user._id, role: user.role }, SECRET_KEY, {
       expiresIn: "1h",
     });
 

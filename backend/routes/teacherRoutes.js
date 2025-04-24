@@ -1,9 +1,10 @@
 import express from "express";
 import { checkAssignmentPlagiarism, generateQuestions, getAllAssignments, getSubmissions } from "../controllers/teacherController.js";
+import {authMiddleware} from "../middleware/authMiddleware.js"
 const teacherRoute = express.Router();
 
-teacherRoute.post("/api/generateQuestions", generateQuestions);
-teacherRoute.get("/api/getAssignments",getAllAssignments);
-teacherRoute.post("/api/checkPlagiarism/:assignmentId",checkAssignmentPlagiarism);
-teacherRoute.get("/api/getSubmissions/:id",getSubmissions);
+teacherRoute.post("/api/generateQuestions", authMiddleware,generateQuestions);
+teacherRoute.get("/api/getAssignments",authMiddleware,getAllAssignments);
+teacherRoute.post("/api/checkPlagiarism/:assignmentId",authMiddleware,checkAssignmentPlagiarism);
+teacherRoute.get("/api/getSubmissions/:id",authMiddleware,getSubmissions);
 export default teacherRoute;

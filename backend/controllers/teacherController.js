@@ -2,7 +2,6 @@ import { Client } from "@gradio/client";
 import Assignment from "../models/assignmentModel.js";
 import Submission from "../models/submissionModel.js";
 import axios from "axios";
-import mongoose from "mongoose";
 import User from "../models/userModel.js";
 const generateQuestions = async (req, res) => {
   const { topic, difficulty, questionTypes, numQuestions } = req.body;
@@ -57,8 +56,8 @@ const generateQuestions = async (req, res) => {
 };
 const getAllAssignments = async (req, res) => {
   try {
-    // const teacherId = req.user._id;
-    const teacherId = new mongoose.Types.ObjectId("68076062772cca1d470522cc");
+    // console.log(req.user);
+    const teacherId = req.user._id;
     const assignments = await Assignment.find({
       createdBy: teacherId,
     }).populate("createdBy", "name email");
