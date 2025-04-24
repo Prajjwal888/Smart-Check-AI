@@ -1,55 +1,102 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List
-import subprocess
-import tempfile
-import os
+# server.py
 import requests
-import json
+import string
+import re
+import numpy as np
+from io import BytesIO
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, field_validator, confloat
+from PyPDF2 import PdfReader
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from typing import List, Dict
 
-app = FastAPI()
+app = FastAPI(title="Plagiarism Checker API")
 
-class PlagiarismRequest(BaseModel):
+class PlagiarismCheckRequest(BaseModel):
     file_urls: List[str]
-    threshold: float = 75.0
+    threshold: float = 75
+
+    @field_validator("threshold")
+    def validate_threshold(cls, value):
+        if not (0 <= value <= 100):
+            raise ValueError("Threshold must be between 0 and 100.")
+        return value
+
+def extract_text_from_pdf(pdf_content: bytes) -> str:
+    """Extract text from PDF content with error handling"""
+    try:
+        text = ""
+        with BytesIO(pdf_content) as pdf_file:
+            reader = PdfReader(pdf_file)
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+        return text.strip()
+    except Exception as e:
+        raise HTTPException(400, f"PDF processing failed: {str(e)}")
+
+def preprocess_text(text: str) -> str:
+    """Enhanced text preprocessing"""
+    # Lowercase and remove punctuation
+    text = text.lower().translate(str.maketrans('', '', string.punctuation))
+    
+    # Remove stopwords (basic list - extend as needed)
+    stopwords = set(['the', 'and', 'is', 'in', 'it', 'to', 'of', 'for'])
+    words = [word for word in text.split() if word not in stopwords]
+    
+    # Remove numbers and extra spaces
+    return re.sub(r'\d+', '', ' '.join(words)).strip()
 
 @app.post("/checkPlagiarism")
-async def check_plagiarism(request: PlagiarismRequest):
+async def check_plagiarism_endpoint(request_data: PlagiarismCheckRequest):
+    """Improved plagiarism detection endpoint"""
     try:
-        # Download files to temp directory
-        print("In python code");
-        temp_files = []
-        for url in request.file_urls:
-            response = requests.get(url, stream=True)
-            response.raise_for_status()
-            
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
-            for chunk in response.iter_content(chunk_size=8192):
-                temp_file.write(chunk)
-            temp_files.append(temp_file.name)
+        # Download and process PDFs
+        texts = []
+        for url in request_data.file_urls:
+            try:
+                response = requests.get(url, timeout=10)
+                response.raise_for_status()
+                raw_text = extract_text_from_pdf(response.content)
+                processed_text = preprocess_text(raw_text)
+                
+                if not processed_text:
+                    raise HTTPException(400, f"No meaningful text from {url}")
+                texts.append(processed_text)
+                
+            except requests.exceptions.RequestException as e:
+                raise HTTPException(400, f"Failed to download {url}: {str(e)}")
+
+        # Calculate TF-IDF vectors
+        vectorizer = TfidfVectorizer()
+        tfidf_matrix = vectorizer.fit_transform(texts)
         
-        # Run plagiarism check
-        result = subprocess.run(
-        ["python", "check_plagiarism.py"],
-        input=json.dumps({
-            "files": temp_files,
-            "threshold": request.threshold
-        }),
-        capture_output=True,
-        text=True
-        )
+        # Compare all pairs
+        threshold = request_data.threshold / 100
+        results = []
         
-        # Cleanup
-        for file in temp_files:
-            os.unlink(file)
+        for i in range(len(texts)):
+            for j in range(i + 1, len(texts)):
+                similarity = cosine_similarity(
+                    tfidf_matrix[i:i+1], 
+                    tfidf_matrix[j:j+1]
+                )[0][0]
+                
+                results.append({
+                    "file1_index": i,
+                    "file2_index": j,
+                    "similarity_score": round(float(similarity), 4),  # Convert to native float
+                    "is_plagiarised": bool(similarity >= threshold)    # Convert to native bool
+                })
         
-        if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=result.stderr)
-        
-        return {"results": json.loads(result.stdout)}
-        
+        return {"results": results}
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(500, f"Internal error: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

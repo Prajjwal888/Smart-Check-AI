@@ -39,12 +39,14 @@ export default function PlagiarismCheck() {
         setSubmissions([]);
         return;
       }
-
       setLoading((prev) => ({ ...prev, submissions: true }));
       setError(null);
       try {
-        const res = await axios.get(`http://localhost:5000/api/getSubmissions/${selectedAssignment}`);
+        const res = await axios.get(
+          `http://localhost:5000/api/getSubmissions/${selectedAssignment}`
+        );
         setSubmissions(res.data);
+        console.log(submissions);
       } catch (err) {
         setError("Failed to load submissions");
         console.error("Error fetching submissions", err);
@@ -58,18 +60,24 @@ export default function PlagiarismCheck() {
 
   const handleCheckAllPlagiarism = async () => {
     if (!selectedAssignment) return;
-    
+
     setLoading((prev) => ({ ...prev, checkingAll: true }));
     setError(null);
-    
+
     try {
       const res = await axios.post(
         `http://localhost:5000/api/checkPlagiarism/${selectedAssignment}`
       );
-      
+
+      const updatedSubs = res.data?.data?.submissions;
+
+      if (!Array.isArray(updatedSubs)) {
+        throw new Error("Invalid response format");
+      }
+
       setSubmissions((prev) =>
         prev.map((sub) => {
-          const updatedSub = res.data.find((s) => s._id === sub._id);
+          const updatedSub = updatedSubs.find((s) => s._id === sub._id);
           return updatedSub || sub;
         })
       );
@@ -81,7 +89,6 @@ export default function PlagiarismCheck() {
     }
   };
 
-  // Check if there are any pending submissions
   const hasPendingSubmissions = submissions.some(
     (sub) => sub.status === "pending"
   );
@@ -202,20 +209,21 @@ export default function PlagiarismCheck() {
             </div>
 
             {/* Plagiarism info */}
-            {(submission.status === "flagged") && (
+            {(submission.status === "checked" ||
+              submission.status === "flagged") && (
               <div className="bg-gray-50 p-3 rounded-lg">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <BarChart className="w-4 h-4" />
                   Plagiarism Score: {submission.plagiarismScore}%
                 </div>
-                {submission.matchedStudents?.length > 0 && (
+                {submission.matchedWith?.length > 0 && (
                   <div className="mt-2">
                     <p className="text-sm font-medium">Similar Submissions:</p>
                     <ul className="list-disc list-inside pl-4">
-                      {submission.matchedStudents.map((student, index) => (
+                      {submission.matchedWith.map((student, index) => (
                         <li key={index} className="text-sm">
-                          {student.name} ({student.email}) - {student.score}%
-                          match
+                          {student.student.name} ({student.student.email}) -{" "}
+                          {student.similarity}% match
                         </li>
                       ))}
                     </ul>
@@ -238,11 +246,13 @@ export default function PlagiarismCheck() {
       </div>
 
       {/* Empty state */}
-      {!loading.submissions && submissions.length === 0 && selectedAssignment && (
-        <div className="text-center py-8 text-gray-500">
-          No submissions found for this assignment
-        </div>
-      )}
+      {!loading.submissions &&
+        submissions.length === 0 &&
+        selectedAssignment && (
+          <div className="text-center py-8 text-gray-500">
+            No submissions found for this assignment
+          </div>
+        )}
     </div>
   );
 }

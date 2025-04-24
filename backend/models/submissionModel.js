@@ -22,9 +22,11 @@ const submissionSchema = new mongoose.Schema(
     plagiarismScore: { type: Number },
     matchedWith: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "User",
-        required: true,
+        student: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        similarity: Number,
       },
     ],
   },
