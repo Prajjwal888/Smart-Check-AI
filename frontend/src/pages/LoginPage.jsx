@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function LoginPage() {
   const [role, setRole] = useState("student");
@@ -7,18 +8,34 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // You can add validation or authentication here
+    try {
+      const res = await axios.post("http://localhost:5000/api/auth/login", {
+        email: email,
+        password,
+        role,
+      });
 
-    if (role === "student") {
-      navigate("/student/dashboard");
-    } else {
-      navigate("/teacher/dashboard");
+      const { token } = res.data;
+      localStorage.setItem("token", token);
+
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      setRole(payload.role);
+
+
+      if (role === "student") {
+        navigate("/student/dashboard");
+      } else {
+        navigate("/teacher/dashboard");
+      }
+    } catch (err) {
+      alert("Invalid ID or password");
     }
   };
-
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#f0f4ff] to-white">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-8">
@@ -64,15 +81,14 @@ export default function LoginPage() {
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email Address
+              Email
             </label>
             <input
               type="email"
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 p-2 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
               required
             />
           </div>
@@ -85,14 +101,14 @@ export default function LoginPage() {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 p-2 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
               required
             />
           </div>
 
           <div className="flex justify-between items-center text-sm">
             <label className="flex items-center space-x-2">
-              <input type="checkbox" className="rounded" />
+              <input type="checkbox" className="rounded size-4" />
               <span>Remember me</span>
             </label>
             <a href="#" className="text-blue-600 hover:underline">
@@ -122,3 +138,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+
