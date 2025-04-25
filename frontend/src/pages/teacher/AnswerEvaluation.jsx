@@ -16,6 +16,14 @@ export default function AnswerEvaluation() {
   const [file, setFile] = useState(null);
   const token = localStorage.getItem("token");
 
+  const [showModal, setShowModal] = useState(false);
+  const [selectedFeedback, setSelectedFeedback] = useState({
+    grade: null,
+    feedback: "",
+    student: "",
+  });
+
+
   // Fetch assignments created by the current teacher
   useEffect(() => {
     const fetchAssignments = async () => {
@@ -77,31 +85,31 @@ export default function AnswerEvaluation() {
     setFile(e.target.files[0]);
   };
 
-  const handleUploadAnswerKey = async () => {
-    if (!file || !selectedAssignment) {
-      setError("Please select an assignment and upload a file.");
-      return;
-    }
+  // const handleUploadAnswerKey = async () => {
+  //   if (!file || !selectedAssignment) {
+  //     setError("Please select an assignment and upload a file.");
+  //     return;
+  //   }
 
-    const formData = new FormData();
-    formData.append("file", file);
+  //   const formData = new FormData();
+  //   formData.append("file", file);
 
-    setUploadingAnswerKey(true);
-    setError(null);
-    try {
-      await axios.post(
-        `http://localhost:5000/api/assignments/${selectedAssignment}/answerKey`,
-        formData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      alert("Answer key uploaded successfully!");
-    } catch (err) {
-      setError("Failed to upload answer key");
-      console.error("Error uploading answer key", err);
-    } finally {
-      setUploadingAnswerKey(false);
-    }
-  };
+  //   setUploadingAnswerKey(true);
+  //   setError(null);
+  //   try {
+  //     await axios.post(
+  //       `http://localhost:5000/api/assignments/${selectedAssignment}/answerKey`,
+  //       formData,
+  //       { headers: { Authorization: `Bearer ${token}` } }
+  //     );
+  //     alert("Answer key uploaded successfully!");
+  //   } catch (err) {
+  //     setError("Failed to upload answer key");
+  //     console.error("Error uploading answer key", err);
+  //   } finally {
+  //     setUploadingAnswerKey(false);
+  //   }
+  // };
 
   const handleEvaluateSubmissions = async () => {
     if (!selectedAssignment) {
@@ -113,18 +121,21 @@ export default function AnswerEvaluation() {
     setError(null);
     try {
       await axios.post(
-        `http://localhost:5000/api/submissions/${selectedAssignment}/evaluate`,
+        `http://localhost:5000/api/evaluate/${selectedAssignment}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      
 
       // Refresh submissions after evaluation
       const res = await axios.get(
         `http://localhost:5000/api/getSubmissions/${selectedAssignment}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       setSubmissions(res.data);
-      alert("Evaluation completed successfully!");
+      // alert("Evaluation completed successfully!");
     } catch (err) {
       setError("Failed to evaluate submissions");
       console.error("Error evaluating submissions", err);
@@ -132,6 +143,10 @@ export default function AnswerEvaluation() {
       setEvaluating(false);
     }
   };
+
+
+
+
 
   return (
     <div className="container mx-auto p-4 animate-fade-in">
@@ -191,7 +206,7 @@ export default function AnswerEvaluation() {
               />
             </div>
 
-            <button
+            {/* <button
               onClick={handleUploadAnswerKey}
               disabled={uploadingAnswerKey || !file || !selectedAssignment}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
@@ -207,7 +222,7 @@ export default function AnswerEvaluation() {
                   Upload Answer Key
                 </>
               )}
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
@@ -226,9 +241,10 @@ export default function AnswerEvaluation() {
           <h2 className="text-xl font-semibold mb-4">Student Submissions</h2>
         )}
 
-        {submissions.map(
-          (submission) =>
-            submission.status === "checked" && (
+        {submissions
+         .filter((submission) => submission.status === "evaluated" || submission.status === "checked")
+         .map(
+          (submission) =>(
               <div
                 key={submission._id}
                 className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow"
@@ -257,11 +273,11 @@ export default function AnswerEvaluation() {
                     >
                       {submission.status}
                     </span>
-                    {submission.grade !== undefined && (
+                    {/* {submission.grade !== undefined && (
                       <span className="text-sm font-medium">
                         Grade: {submission.grade}%
                       </span>
-                    )}
+                    )} */}
                   </div>
                 </div>
 
@@ -280,17 +296,34 @@ export default function AnswerEvaluation() {
                 {/* Evaluation info */}
                 {submission.status === "evaluated" && (
                   <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <BarChart className="w-4 h-4" />
                       Grade Score: {submission.grade}%
                     </div>
-                    {submission.feedback && (
-                      <div className="mt-2 text-sm">
-                        <p className="font-medium">Feedback:</p>
-                        <p className="text-gray-700">{submission.feedback}</p>
-                      </div>
-                    )}
+                    <button
+                      onClick={() =>
+                        setSelectedFeedback({
+                          grade: submission.grade,
+                          // feedback: submission.feedback,
+                          student: submission.studentId?.name || "Unknown Student",
+                        }) || setShowModal(true)
+                      }
+                      className="text-blue-600 hover:underline text-sm"
+                    >
+                      View Result
+                    </button>
+
                   </div>
+                
+                  {/* {submission.feedback && (
+                    <div className="mt-2 text-sm text-gray-700">
+                      <p className="font-medium">Feedback:</p>
+                      <p>{submission.results}</p>
+                    </div>
+                  )} */}
+                </div>
+                
                 )}
               </div>
             )
@@ -328,6 +361,37 @@ export default function AnswerEvaluation() {
             No submissions found for this assignment
           </div>
         )}
+
+
+        {/* Modal for viewing feedback */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
+            <h2 className="text-xl font-bold mb-2">
+              Result for {selectedFeedback.student}
+            </h2>
+            <p className="mb-2">
+              <span className="font-medium">Grade:</span>{" "}
+              {selectedFeedback.grade}%
+            </p>
+            <div>
+              <p className="font-medium mb-1">Feedback:</p>
+              <p className="text-gray-700 whitespace-pre-line">
+                {selectedFeedback.feedback || "No feedback available."}
+              </p>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

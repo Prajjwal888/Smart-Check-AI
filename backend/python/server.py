@@ -13,6 +13,17 @@ from sklearn.cluster import KMeans
 from collections import Counter
 from fastapi.responses import HTMLResponse
 from typing import List, Dict
+import subprocess
+import tempfile
+import os
+import json
+from pdfminer.high_level import extract_text
+import shutil
+import nltk
+
+# NLTK setup
+nltk.download('punkt')
+nltk.download('stopwords')
 
 
 app = FastAPI(title="Academic Analytics API")
@@ -38,6 +49,10 @@ class PlagiarismCheckRequest(BaseModel):
         if not (0 <= value <= 100):
             raise ValueError("Threshold must be between 0 and 100.")
         return value
+
+class EvaluationRequest(BaseModel):
+    file_urls: List[str]
+    answer_key: str
 
 def extract_text_from_pdf(pdf_content: bytes) -> str:
     """Extract text from PDF content with error handling"""
@@ -105,6 +120,71 @@ async def check_plagiarism_endpoint(request_data: PlagiarismCheckRequest):
         raise
     except Exception as e:
         raise HTTPException(500, f"Internal error: {str(e)}")
+
+@app.post("/evaluate")
+async def evaluate_submissions(request: EvaluationRequest):
+    try:
+        temp_dir = tempfile.mkdtemp()
+        student_text_path = os.path.join(temp_dir, "student_answers.txt")
+        answer_key_path = os.path.join(temp_dir, "answer_key.txt")
+
+        # Download and extract text from student PDFs
+        all_student_answers = []
+        for url in request.file_urls:
+            response = requests.get(url, stream=True)
+            response.raise_for_status()
+
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
+                for chunk in response.iter_content(chunk_size=8192):
+                    temp_pdf.write(chunk)
+
+            text = extract_text(temp_pdf.name)
+            answers = [line.strip() for line in text.strip().splitlines() if line.strip()]
+            all_student_answers.append(answers)
+            os.unlink(temp_pdf.name)
+
+        # Flatten student answers and write to file
+        with open(student_text_path, "w") as f:
+            for line in all_student_answers[0]:  # Only evaluating the first student
+                f.write(line + "\n")
+
+        # Download and extract text from answer key
+        response = requests.get(request.answer_key, stream=True)
+        response.raise_for_status()
+
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
+            for chunk in response.iter_content(chunk_size=8192):
+                temp_pdf.write(chunk)
+
+        answer_key_text = extract_text(temp_pdf.name)
+        os.unlink(temp_pdf.name)
+
+        with open(answer_key_path, "w") as f:
+            for line in answer_key_text.strip().splitlines():
+                if line.strip():
+                    f.write(line.strip() + "\n")
+
+        # Call evaluation.py via subprocess
+        result = subprocess.run(
+            ["python", "evaluation.py"],
+            input=json.dumps({
+                "student_file": student_text_path,
+                "answer_key": answer_key_path
+            }),
+            capture_output=True,
+            text=True
+        )
+
+        shutil.rmtree(temp_dir)
+
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=result.stderr)
+
+        return {"results": json.loads(result.stdout)}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 class ClassPerformanceAnalyzer:
     def __init__(self):

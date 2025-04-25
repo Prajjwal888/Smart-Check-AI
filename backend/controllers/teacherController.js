@@ -185,6 +185,76 @@ const checkAssignmentPlagiarism = async (req, res) => {
   }
 };
 
+const evaluate = async (req, res) => {
+  try {
+    const assignmentId = req.params.assignmentId;
+    console.log(assignmentId);
+
+    // Step 1: Get answer key
+    const assignment = await Assignment.findById(assignmentId);
+    
+    if (!assignment || !assignment.answerKeyUrl) {
+      return res.status(400).json({ error: "Answer key not found." });
+    }
+
+    // Step 2: Get submissions with status 'checked'
+    const submissions = await Submission.find({
+      assignmentId,
+      status: "checked",
+    });
+
+    if (submissions.length === 0) {
+      return res.status(400).json({ error: "No checked submissions to evaluate." });
+    }
+
+    const file_urls = submissions.map((s) => s.fileUrl);
+
+    // Step 3: Send to FastAPI
+    const fastapiResponse = await axios.post("http://localhost:8000/evaluate", {
+      file_urls,
+      answer_key: assignment.answerKeyUrl,
+    });
+
+    const evaluationResults = fastapiResponse.data.results;
+
+    // Step 4: Update each submission
+    for (let i = 0; i < submissions.length; i++) {
+      const submission = submissions[i];
+      const result = evaluationResults;
+
+      // Calculate the average score for this submission
+      const avgScore =
+        result && result.length > 0
+          ? result.reduce((sum, q) => sum + q.score, 0) / result.length
+          : 0;
+
+      // Generate the feedback string for this submission by concatenating feedback for each question
+
+
+      // Update the submission's grade and feedback
+      submission.grade = Math.round(avgScore * 20); // out of 100
+      submission.feedback = result
+        .map((q) => `Q${q.question}: ${q.topic} (${q.score}/5)`)
+        .join("; ");
+      submission.results = result; // ✅ Store full evaluation data
+      submission.status = "evaluated";
+      console.log(submission.feedback)
+      console.log(submission.results)
+
+      // Save the updated submission
+      await submission.save();
+    }
+
+    return res.json({
+      message: "Evaluation completed",
+      evaluated: submissions.length,
+    });
+  } catch (error) {
+    console.error("Evaluation Error:", error.message);
+    return res.status(500).json({ error: "Evaluation failed" });
+  }
+};
+
 const uploadAnswerKey = async (req, res) => {};
 const getProfile = async (req, res) => {
   try {
@@ -280,4 +350,5 @@ export {
   getSubjects,
   getAssignmentForSubject,
   generateClassPerformance,
+  evaluate,
 };
