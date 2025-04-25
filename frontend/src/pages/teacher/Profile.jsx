@@ -1,37 +1,40 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { User, Mail, Phone, Book, Calendar, MapPin, Award } from "lucide-react";
 import { useAppContext } from "../../context/AppContext";
-
+import axios from "axios";
 export default function TeacherProfile() {
   const { user } = useAppContext();
   const [isEditing, setIsEditing] = useState(false);
-
-  const teacherData = {
-    name: "Sarah Johnson",
-    email: "sarah.johnson@education.org",
-    phone: "+1 (555) 987-6543",
-    department: "Science Department",
-    joinDate: "2020-08-15",
-    address: "456 Teacher Avenue, Academic City, AC 12345",
-    subjects: ["Biology", "Chemistry", "Environmental Science"],
-    education: [
-      {
-        degree: "Ph.D. in Molecular Biology",
-        institution: "State University",
-        year: "2018",
-      },
-      {
-        degree: "M.Sc. in Biology",
-        institution: "City College",
-        year: "2014",
-      },
-    ],
-    certifications: [
-      "Advanced Teaching Certification",
-      "STEM Education Specialist",
-      "Digital Learning Expert",
-    ],
-  };
+  const [data, setData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    department: "",
+    joinDate: "",
+    address: "",
+    subjects: [],
+  });
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          "http://localhost:5000/api/getProfile",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        console.log(response.data);
+        setData(response.data.profile);
+      } catch (error) {
+        console.log("Error loading profile");
+        console.log(error);
+      }
+    }
+    loadProfile();
+  }, []);
 
   return (
     <div className="animate-fade-in">
@@ -50,12 +53,12 @@ export default function TeacherProfile() {
               <h2 className="text-lg font-medium text-gray-900">
                 Professional Information
               </h2>
-              <button
+              {/* <button
                 onClick={() => setIsEditing(!isEditing)}
                 className="btn bg-white border border-gray-300 hover:bg-gray-50 text-gray-700"
               >
                 {isEditing ? "Save Changes" : "Edit Profile"}
-              </button>
+              </button> */}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -68,12 +71,12 @@ export default function TeacherProfile() {
                   <input
                     type="text"
                     className="form-input"
-                    defaultValue={teacherData.name}
+                    defaultValue={data.name}
                   />
                 ) : (
                   <div className="flex items-center">
                     <User size={18} className="text-gray-400 mr-2" />
-                    <span>{teacherData.name}</span>
+                    <span>{data.name}</span>
                   </div>
                 )}
               </div>
@@ -87,12 +90,12 @@ export default function TeacherProfile() {
                   <input
                     type="email"
                     className="form-input"
-                    defaultValue={teacherData.email}
+                    defaultValue={data.email}
                   />
                 ) : (
                   <div className="flex items-center">
                     <Mail size={18} className="text-gray-400 mr-2" />
-                    <span>{teacherData.email}</span>
+                    <span>{data.email}</span>
                   </div>
                 )}
               </div>
@@ -106,12 +109,12 @@ export default function TeacherProfile() {
                   <input
                     type="tel"
                     className="form-input"
-                    defaultValue={teacherData.phone}
+                    defaultValue={data.phoneNumber}
                   />
                 ) : (
                   <div className="flex items-center">
                     <Phone size={18} className="text-gray-400 mr-2" />
-                    <span>{teacherData.phone}</span>
+                    <span>{data.phoneNumber}</span>
                   </div>
                 )}
               </div>
@@ -125,12 +128,12 @@ export default function TeacherProfile() {
                   <input
                     type="text"
                     className="form-input"
-                    defaultValue={teacherData.department}
+                    defaultValue={data.department}
                   />
                 ) : (
                   <div className="flex items-center">
                     <Book size={18} className="text-gray-400 mr-2" />
-                    <span>{teacherData.department}</span>
+                    <span>{data.department}</span>
                   </div>
                 )}
               </div>
@@ -144,14 +147,12 @@ export default function TeacherProfile() {
                   <input
                     type="date"
                     className="form-input"
-                    defaultValue={teacherData.joinDate}
+                    defaultValue={data.joinDate}
                   />
                 ) : (
                   <div className="flex items-center">
                     <Calendar size={18} className="text-gray-400 mr-2" />
-                    <span>
-                      {new Date(teacherData.joinDate).toLocaleDateString()}
-                    </span>
+                    <span>{new Date(data.joinDate).toLocaleDateString()}</span>
                   </div>
                 )}
               </div>
@@ -165,12 +166,12 @@ export default function TeacherProfile() {
                   <input
                     type="text"
                     className="form-input"
-                    defaultValue={teacherData.address}
+                    defaultValue={data.address}
                   />
                 ) : (
                   <div className="flex items-center">
                     <MapPin size={18} className="text-gray-400 mr-2" />
-                    <span>{teacherData.address}</span>
+                    <span>{data.address}</span>
                   </div>
                 )}
               </div>
@@ -178,7 +179,7 @@ export default function TeacherProfile() {
           </div>
 
           {/* Education & Certifications */}
-          <div className="card p-6 mt-6">
+          {/* <div className="card p-6 mt-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">
               Education & Certifications
             </h2>
@@ -188,7 +189,7 @@ export default function TeacherProfile() {
                 Education
               </h3>
               <div className="space-y-4">
-                {teacherData.education.map((edu, index) => (
+                {data.education.map((edu, index) => (
                   <div key={index} className="flex items-start">
                     <Award size={18} className="text-primary-500 mt-1 mr-2" />
                     <div>
@@ -207,7 +208,7 @@ export default function TeacherProfile() {
                 Certifications
               </h3>
               <div className="flex flex-wrap gap-2">
-                {teacherData.certifications.map((cert, index) => (
+                {data.certifications.map((cert, index) => (
                   <span
                     key={index}
                     className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
@@ -217,7 +218,7 @@ export default function TeacherProfile() {
                 ))}
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Sidebar */}
@@ -231,8 +232,8 @@ export default function TeacherProfile() {
                 className="w-24 h-24 rounded-full mx-auto"
               />
             </div>
-            <h3 className="font-medium text-lg">{teacherData.name}</h3>
-            <p className="text-gray-500 text-sm">{teacherData.department}</p>
+            <h3 className="font-medium text-lg">{data.name}</h3>
+            <p className="text-gray-500 text-sm">{data.department}</p>
 
             <div className="mt-4 pt-4 border-t">
               <div className="grid grid-cols-2 gap-4">
@@ -254,7 +255,7 @@ export default function TeacherProfile() {
               Teaching Subjects
             </h3>
             <div className="space-y-2">
-              {teacherData.subjects.map((subject, index) => (
+              {data.subjects.map((subject, index) => (
                 <div
                   key={index}
                   className="p-3 bg-gray-50 rounded-lg flex items-center justify-between"

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { BarChart, FileText, Loader2 } from "lucide-react";
+import { BarChart, FileText, Loader2, CheckCircle, Upload } from "lucide-react";
 
 export default function AnswerEvaluation() {
   const [assignments, setAssignments] = useState([]);
@@ -10,8 +10,11 @@ export default function AnswerEvaluation() {
     assignments: false,
     submissions: false,
   });
+  const [evaluating, setEvaluating] = useState(false);
+  const [uploadingAnswerKey, setUploadingAnswerKey] = useState(false);
   const [error, setError] = useState(null);
   const [file, setFile] = useState(null);
+  const token = localStorage.getItem("token");
 
   // Fetch assignments created by the current teacher
   useEffect(() => {
@@ -19,7 +22,14 @@ export default function AnswerEvaluation() {
       setLoading((prev) => ({ ...prev, assignments: true }));
       setError(null);
       try {
-        const res = await axios.get("http://localhost:5000/api/getAssignments");
+        const res = await axios.get(
+          "http://localhost:5000/api/getAssignments",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         setAssignments(res.data?.assignments || []);
       } catch (err) {
         setError("Failed to load assignments");
@@ -30,7 +40,7 @@ export default function AnswerEvaluation() {
       }
     };
     fetchAssignments();
-  }, []);
+  }, [token]);
 
   // Fetch submissions when assignment is selected
   useEffect(() => {
@@ -44,7 +54,12 @@ export default function AnswerEvaluation() {
       setError(null);
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/getSubmissions/${selectedAssignment}`
+          `http://localhost:5000/api/getSubmissions/${selectedAssignment}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
         setSubmissions(res.data);
       } catch (err) {
@@ -56,13 +71,13 @@ export default function AnswerEvaluation() {
     };
 
     fetchSubmissions();
-  }, [selectedAssignment]);
+  }, [selectedAssignment, token]);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
   };
 
-  const handleUpload = async () => {
+  const handleUploadAnswerKey = async () => {
     if (!file || !selectedAssignment) {
       setError("Please select an assignment and upload a file.");
       return;
@@ -70,19 +85,51 @@ export default function AnswerEvaluation() {
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("assignmentId", selectedAssignment);
 
+    setUploadingAnswerKey(true);
+    setError(null);
     try {
-      // Upload file logic here
-      const res = await axios.post(
-        "http://localhost:5000/api/uploadFile",
-        formData
+      await axios.post(
+        `http://localhost:5000/api/assignments/${selectedAssignment}/answerKey`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      alert("File uploaded successfully!");
-      // Handle response, e.g., refresh submissions or other logic
+      alert("Answer key uploaded successfully!");
     } catch (err) {
-      setError("Failed to upload file");
-      console.error("Error uploading file", err);
+      setError("Failed to upload answer key");
+      console.error("Error uploading answer key", err);
+    } finally {
+      setUploadingAnswerKey(false);
+    }
+  };
+
+  const handleEvaluateSubmissions = async () => {
+    if (!selectedAssignment) {
+      setError("Please select an assignment first.");
+      return;
+    }
+
+    setEvaluating(true);
+    setError(null);
+    try {
+      await axios.post(
+        `http://localhost:5000/api/submissions/${selectedAssignment}/evaluate`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Refresh submissions after evaluation
+      const res = await axios.get(
+        `http://localhost:5000/api/getSubmissions/${selectedAssignment}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSubmissions(res.data);
+      alert("Evaluation completed successfully!");
+    } catch (err) {
+      setError("Failed to evaluate submissions");
+      console.error("Error evaluating submissions", err);
+    } finally {
+      setEvaluating(false);
     }
   };
 
@@ -91,7 +138,7 @@ export default function AnswerEvaluation() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Answer Evaluation</h1>
         <p className="text-gray-600 mt-1">
-          Evaluate student submissions for correctness and plagiarism.
+          Evaluate student submissions by comparing with answer key.
         </p>
       </div>
 
@@ -102,7 +149,7 @@ export default function AnswerEvaluation() {
         </div>
       )}
 
-      {/* Select Assignment and Upload File Section */}
+      {/* Select Assignment Section */}
       <div className="bg-white shadow-lg rounded-lg p-6 space-y-6 mb-8">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -125,33 +172,43 @@ export default function AnswerEvaluation() {
           </select>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Upload File
-          </label>
-          <input
-            type="file"
-            className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            onChange={handleFileChange}
-            disabled={loading.submissions}
-          />
-        </div>
+        {/* Answer Key Upload Section */}
+        <div className="border-t pt-4">
+          <h3 className="font-medium text-lg mb-3 flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Answer Key Management
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload Answer Key
+              </label>
+              <input
+                type="file"
+                className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={handleFileChange}
+                disabled={loading.submissions}
+              />
+            </div>
 
-        <div>
-          <button
-            onClick={handleUpload}
-            disabled={loading.submissions || !file}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
-          >
-            {loading.submissions ? (
-              <>
-                <Loader2 className="animate-spin h-4 w-4" />
-                Uploading...
-              </>
-            ) : (
-              "Upload and Evaluate Submission"
-            )}
-          </button>
+            <button
+              onClick={handleUploadAnswerKey}
+              disabled={uploadingAnswerKey || !file || !selectedAssignment}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+            >
+              {uploadingAnswerKey ? (
+                <>
+                  <Loader2 className="animate-spin h-4 w-4" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  Upload Answer Key
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -159,73 +216,110 @@ export default function AnswerEvaluation() {
       {loading.submissions && (
         <div className="flex justify-center items-center py-8">
           <Loader2 className="animate-spin h-8 w-8 text-blue-500" />
+          <span className="ml-2">Loading submissions...</span>
         </div>
       )}
 
       {/* Submissions list */}
       <div className="space-y-4">
-        {submissions.map((submission) => (
-          <div
-            key={submission._id}
-            className="p-4 border rounded-lg bg-white shadow-sm"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
-              <div>
-                <h3 className="font-semibold text-lg">
-                  {submission.studentId?.name || "Unknown Student"}
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  {submission.studentId?.email || "No email"}
-                </p>
-              </div>
+        {submissions.length > 0 && (
+          <h2 className="text-xl font-semibold mb-4">Student Submissions</h2>
+        )}
 
-              <div className="flex flex-col sm:items-end gap-1">
-                <span
-                  className={`px-2 py-1 text-xs sm:text-sm rounded-md ${
-                    submission.status === "flagged"
-                      ? "bg-red-100 text-red-800"
-                      : submission.status === "evaluated"
-                      ? "bg-green-100 text-green-800"
-                      : submission.status === "late"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  {submission.status}
-                </span>
-                {submission.grade && (
-                  <span className="text-sm font-medium">
-                    Grade: {submission.grade}
-                  </span>
+        {submissions.map(
+          (submission) =>
+            submission.status === "checked" && (
+              <div
+                key={submission._id}
+                className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
+                  <div>
+                    <h3 className="font-semibold text-lg">
+                      {submission.studentId?.name || "Unknown Student"}
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      {submission.studentId?.email || "No email"}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:items-end gap-1">
+                    <span
+                      className={`px-2 py-1 text-xs sm:text-sm rounded-md ${
+                        submission.status === "flagged"
+                          ? "bg-red-100 text-red-800"
+                          : submission.status === "evaluated"
+                          ? "bg-green-100 text-green-800"
+                          : submission.status === "late"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {submission.status}
+                    </span>
+                    {submission.grade !== undefined && (
+                      <span className="text-sm font-medium">
+                        Grade: {submission.grade}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="w-4 h-4" />
+                  <a
+                    href={submission.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline text-sm"
+                  >
+                    View Submission File
+                  </a>
+                </div>
+
+                {/* Evaluation info */}
+                {submission.status === "evaluated" && (
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <BarChart className="w-4 h-4" />
+                      Grade Score: {submission.grade}%
+                    </div>
+                    {submission.feedback && (
+                      <div className="mt-2 text-sm">
+                        <p className="font-medium">Feedback:</p>
+                        <p className="text-gray-700">{submission.feedback}</p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-
-            <div className="flex items-center gap-2 mb-3">
-              <FileText className="w-4 h-4" />
-              <a
-                href={submission.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline text-sm"
-              >
-                View Submission File
-              </a>
-            </div>
-
-            {/* Plagiarism info */}
-            {submission.status === "flagged" && (
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <BarChart className="w-4 h-4" />
-                  Plagiarism Score: {submission.plagiarismScore}%
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+            )
+        )}
       </div>
-
+      {/* Evaluate Submissions Section */}
+      <div className="border-t pt-4">
+        {/* <h3 className="font-medium text-lg mb-3 flex items-center gap-2">
+          <CheckCircle className="w-5 h-5" />
+          Evaluation Controls
+        </h3> */}
+        <button
+          onClick={handleEvaluateSubmissions}
+          disabled={evaluating || !selectedAssignment}
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+        >
+          {evaluating ? (
+            <>
+              <Loader2 className="animate-spin h-4 w-4" />
+              Evaluating...
+            </>
+          ) : (
+            <>
+              <BarChart className="w-4 h-4" />
+              Evaluate All Checked Submissions
+            </>
+          )}
+        </button>
+      </div>
       {/* Empty state */}
       {!loading.submissions &&
         submissions.length === 0 &&

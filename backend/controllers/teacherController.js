@@ -1,4 +1,4 @@
-import { Client } from "@gradio/client";
+import { Client, prepare_files } from "@gradio/client";
 import Assignment from "../models/assignmentModel.js";
 import Submission from "../models/submissionModel.js";
 import axios from "axios";
@@ -7,7 +7,7 @@ const generateQuestions = async (req, res) => {
   const { topic, difficulty, questionTypes, numQuestions } = req.body;
   console.log("Request Body:", req.body);
   const client = await Client.connect(
-    "https://7b90b4ce705f89c3e0.gradio.live/"
+    "https://84d8135c05fbf778f8.gradio.live/"
   );
   try {
     const result = await client.predict("/predict", {
@@ -184,9 +184,23 @@ const checkAssignmentPlagiarism = async (req, res) => {
     });
   }
 };
+
+const uploadAnswerKey = async (req, res) => {};
+const getProfile = async (req, res) => {
+  try {
+    const id = req.user._id;
+    const profile = await User.findById(id);
+    res.status(200).json({ success: true, profile });
+  } catch (error) {
+    console.error("Error fetching assignments by teacher:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 export {
   generateQuestions,
   getAllAssignments,
   checkAssignmentPlagiarism,
   getSubmissions,
+  uploadAnswerKey,
+  getProfile,
 };
