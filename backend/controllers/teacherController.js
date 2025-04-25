@@ -7,7 +7,7 @@ const generateQuestions = async (req, res) => {
   const { topic, difficulty, questionTypes, numQuestions } = req.body;
   console.log("Request Body:", req.body);
   const client = await Client.connect(
-    "https://84d8135c05fbf778f8.gradio.live/"
+    "https://2535285a39f435cadc.gradio.live/"
   );
   try {
     const result = await client.predict("/predict", {
@@ -196,6 +196,80 @@ const getProfile = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+const getSubjects = async (req, res) => {
+  try {
+    const id = req.user._id;
+    const user = await User.findById(id);
+    res.status(200).json({ success: true, subjects: user.subjects });
+  } catch (error) {
+    console.error("Error fetching subjects of teacher:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+const getAssignmentForSubject = async (req, res) => {
+  try {
+    const id = req.user._id;
+    const { subject } = req.params;
+    if (!subject) {
+      return res.status(400).json({ error: "Subject ID is required" });
+    }
+    const filteredAssignments = await Assignment.find({
+      createdBy: id,
+      subject,
+    });
+    res.status(200).json({ success: true, assignments: filteredAssignments });
+  } catch (error) {
+    console.error("Error fetching subjects of teacher:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+const generateClassPerformance = async (req, res) => {
+  const {assignmentId } = req.body;
+  try {
+    const submissions = await Submission.find({
+      assignmentId
+    }).populate("studentId");
+    // console.log(submissions);
+    const reportData = {
+      submissions: submissions
+        .filter(sub => sub.status === 'evaluated')
+        .map(sub => ({
+          student_name: sub.studentId.name,
+          results: sub.results ? sub.results.map(result => ({
+            score: result.score,
+            topic: result.topic,
+            student_answer: result.student_answer,
+            reference_answer: result.reference_answer
+          })) : []
+        }))
+    };
+    // console.log(reportData);
+    const response = await axios.post(
+      "http://localhost:8000/generatePerformanceReport",
+      reportData,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/html",
+        },
+      }
+    );
+
+    res.set("Content-Type", "text/html");
+    res.send(response.data);
+  } catch (error) {
+    console.error("Detailed error:", {
+      message: error.message,
+      response: error.response?.data,
+      stack: error.stack,
+    });
+
+    res.status(error.response?.status || 500).json({
+      error: "Failed to generate performance report",
+      details: error.response?.data || error.message,
+    });
+  }
+};
 export {
   generateQuestions,
   getAllAssignments,
@@ -203,4 +277,7 @@ export {
   getSubmissions,
   uploadAnswerKey,
   getProfile,
+  getSubjects,
+  getAssignmentForSubject,
+  generateClassPerformance,
 };
