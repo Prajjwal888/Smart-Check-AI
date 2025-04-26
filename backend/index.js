@@ -13,7 +13,7 @@ connectDB();
 const PORT = 5000;
 
 app.use("/api/auth", authRoute);
-app.use("/api/teacher", teacherRoute);
+app.use("/", teacherRoute);
 app.use("/api/student", studentRoute);
 
 app.get("/api/health", (_req, res) => {
