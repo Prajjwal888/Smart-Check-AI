@@ -17,7 +17,7 @@ try {
     }
 
     const token = jwt.sign({ _id: user._id, role: user.role }, SECRET_KEY, {
-      expiresIn: "1h",
+      expiresIn: "72h",
     });
 
     res.json({ token });

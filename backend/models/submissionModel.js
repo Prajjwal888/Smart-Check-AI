@@ -29,6 +29,16 @@ const submissionSchema = new mongoose.Schema(
         similarity: Number,
       },
     ],
+    results: [
+      {
+        question: { type: Number },
+        score: { type: Number },
+        similarity: { type: Number },
+        topic: { type: String },
+        student_answer: { type: String },
+        reference_answer: { type: String },
+      },
+    ],
   },
   { timestamps: true }
 );

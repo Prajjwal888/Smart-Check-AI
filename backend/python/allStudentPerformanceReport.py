@@ -1,213 +1,27 @@
-import requests
-import string
-import re
-import numpy as np
 import pandas as pd
-from io import BytesIO
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, field_validator,Field
-from PyPDF2 import PdfReader
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import KMeans
+from sklearn.metrics.pairwise import cosine_similarity
+import re
 from collections import Counter
-from fastapi.responses import HTMLResponse
-from typing import List, Dict
-import subprocess
-import tempfile
-import os
-import json
-from pdfminer.high_level import extract_text
-import shutil
-import nltk
-
-# NLTK setup
-nltk.download('punkt')
-nltk.download('stopwords')
-
-
-app = FastAPI(title="Academic Analytics API")
-class ResultItem(BaseModel):
-    score: float = Field(..., ge=0, le=5)
-    topic: str
-    student_answer: str
-    reference_answer: str
-
-class SubmissionItem(BaseModel):
-    student_name: str
-    results: List[ResultItem]
-
-class PerformanceReportRequest(BaseModel):
-    submissions: List[SubmissionItem]
-
-class PlagiarismCheckRequest(BaseModel):
-    file_urls: List[str]
-    threshold: float = 75
-
-    @field_validator("threshold")
-    def validate_threshold(cls, value):
-        if not (0 <= value <= 100):
-            raise ValueError("Threshold must be between 0 and 100.")
-        return value
-
-class EvaluationRequest(BaseModel):
-    file_urls: List[str]
-    answer_key: str
-
-def extract_text_from_pdf(pdf_content: bytes) -> str:
-    """Extract text from PDF content with error handling"""
-    try:
-        text = ""
-        with BytesIO(pdf_content) as pdf_file:
-            reader = PdfReader(pdf_file)
-            for page in reader.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
-        return text.strip()
-    except Exception as e:
-        raise HTTPException(400, f"PDF processing failed: {str(e)}")
-
-def preprocess_text(text: str) -> str:
-    """Enhanced text preprocessing"""
-    text = text.lower().translate(str.maketrans('', '', string.punctuation))
-    stopwords = set(['the', 'and', 'is', 'in', 'it', 'to', 'of', 'for'])
-    words = [word for word in text.split() if word not in stopwords]
-    return re.sub(r'\d+', '', ' '.join(words)).strip()
-
-@app.post("/checkPlagiarism")
-async def check_plagiarism_endpoint(request_data: PlagiarismCheckRequest):
-    """Improved plagiarism detection endpoint"""
-    try:
-        texts = []
-        for url in request_data.file_urls:
-            try:
-                response = requests.get(url, timeout=10)
-                response.raise_for_status()
-                raw_text = extract_text_from_pdf(response.content)
-                processed_text = preprocess_text(raw_text)
-                
-                if not processed_text:
-                    raise HTTPException(400, f"No meaningful text from {url}")
-                texts.append(processed_text)
-                
-            except requests.exceptions.RequestException as e:
-                raise HTTPException(400, f"Failed to download {url}: {str(e)}")
-
-        vectorizer = TfidfVectorizer()
-        tfidf_matrix = vectorizer.fit_transform(texts)
-        
-        threshold = request_data.threshold / 100
-        results = []
-        
-        for i in range(len(texts)):
-            for j in range(i + 1, len(texts)):
-                similarity = cosine_similarity(
-                    tfidf_matrix[i:i+1], 
-                    tfidf_matrix[j:j+1]
-                )[0][0]
-                
-                results.append({
-                    "file1_index": i,
-                    "file2_index": j,
-                    "similarity_score": round(float(similarity), 4),  
-                    "is_plagiarised": bool(similarity >= threshold)
-                })
-        
-        return {"results": results}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(500, f"Internal error: {str(e)}")
-
-@app.post("/evaluate")
-async def evaluate_submissions(request: EvaluationRequest):
-    try:
-        temp_dir = tempfile.mkdtemp()
-        student_text_path = os.path.join(temp_dir, "student_answers.txt")
-        answer_key_path = os.path.join(temp_dir, "answer_key.txt")
-
-        # Download and extract text from student PDFs
-        all_student_answers = []
-        for url in request.file_urls:
-            response = requests.get(url, stream=True)
-            response.raise_for_status()
-
-            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
-                for chunk in response.iter_content(chunk_size=8192):
-                    temp_pdf.write(chunk)
-
-            text = extract_text(temp_pdf.name)
-            answers = [line.strip() for line in text.strip().splitlines() if line.strip()]
-            all_student_answers.append(answers)
-            os.unlink(temp_pdf.name)
-
-        # Flatten student answers and write to file
-        with open(student_text_path, "w") as f:
-            for line in all_student_answers[0]:  # Only evaluating the first student
-                f.write(line + "\n")
-
-        # Download and extract text from answer key
-        response = requests.get(request.answer_key, stream=True)
-        response.raise_for_status()
-
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
-            for chunk in response.iter_content(chunk_size=8192):
-                temp_pdf.write(chunk)
-
-        answer_key_text = extract_text(temp_pdf.name)
-        os.unlink(temp_pdf.name)
-
-        with open(answer_key_path, "w") as f:
-            for line in answer_key_text.strip().splitlines():
-                if line.strip():
-                    f.write(line.strip() + "\n")
-
-        # Call evaluation.py via subprocess
-        result = subprocess.run(
-            ["python", "evaluation.py"],
-            input=json.dumps({
-                "student_file": student_text_path,
-                "answer_key": answer_key_path
-            }),
-            capture_output=True,
-            text=True
-        )
-
-        shutil.rmtree(temp_dir)
-
-        if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=result.stderr)
-
-        return {"results": json.loads(result.stdout)}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 class ClassPerformanceAnalyzer:
     def __init__(self):
         self.vectorizer = TfidfVectorizer(stop_words='english', max_features=5000)
         self.cluster_model = KMeans(n_clusters=5, random_state=42)
-    def create_dataframe(self, submissions):
-        """Create DataFrame directly from submission data"""
+
+    def load_data(self, csv_path):
+        """Robust data loader with comprehensive cleaning"""
         try:
-            rows = []
-            for submission in submissions:
-                student = submission.get('student_name', 'Unknown')
-                for result in submission.get('results', []):
-                    rows.append({
-                        'Student Name': student,
-                        'Score/5': f"{float(result.get('score', 0)):.2f}/5",
-                        'Topic': result.get('topic', 'Unknown'),
-                        'Student Answer': result.get('student_answer', ''),
-                        'Reference Answer': result.get('reference_answer', '')
-                    })
+            df = pd.read_csv(csv_path)
             
-            df = pd.DataFrame(rows)
+            # Validate columns
+            required = ['Student Name', 'Score/5', 'Topic', 'Student Answer', 'Reference Answer']
+            if not set(required).issubset(df.columns):
+                missing = set(required) - set(df.columns)
+                raise ValueError(f"Missing columns: {missing}")
             
-            # Process scores
+            # Clean and convert scores
             df['Score'] = (
                 df['Score/5']
                 .astype(str)
@@ -217,38 +31,6 @@ class ClassPerformanceAnalyzer:
             )
             
             # Clean text columns
-            text_cols = ['Student Name', 'Topic', 'Student Answer', 'Reference Answer']
-            df[text_cols] = (
-                df[text_cols]
-                .astype(str)
-                .apply(lambda x: x.str.replace('"', '').str.strip())
-                .fillna('Unknown')
-            )
-            
-            return df
-            
-        except Exception as e:
-            print(f"🚨 DataFrame creation error: {str(e)}")
-            return pd.DataFrame()
-
-    def load_data(self, csv_file):
-        """Robust data loader with comprehensive cleaning"""
-        try:
-            df = pd.read_csv(csv_file)
-            
-            required = ['Student Name', 'Score/5', 'Topic', 'Student Answer', 'Reference Answer']
-            if not set(required).issubset(df.columns):
-                missing = set(required) - set(df.columns)
-                raise ValueError(f"Missing columns: {missing}")
-            
-            df['Score'] = (
-                df['Score/5']
-                .astype(str)
-                .str.extract(r'([0-9.]+)')[0]
-                .astype(float)
-                .fillna(0)
-            )
-            
             text_cols = ['Student Name', 'Topic', 'Student Answer', 'Reference Answer']
             df[text_cols] = (
                 df[text_cols]
@@ -268,6 +50,7 @@ class ClassPerformanceAnalyzer:
         if df.empty:
             return {"error": "No valid data to analyze"}
             
+        # 1. Overall Metrics
         overall = {
             'Average': df['Score'].mean(),
             'Max': df['Score'].max(),
@@ -278,6 +61,7 @@ class ClassPerformanceAnalyzer:
             'StdDev': df['Score'].std()
         }
 
+        # 2. Student Performance
         student_stats = (
             df.groupby('Student Name')['Score']
             .agg(['mean', 'max', 'count'])
@@ -287,6 +71,7 @@ class ClassPerformanceAnalyzer:
             .to_dict('index')
         )
 
+        # 3. Topic Analysis
         topic_stats = (
             df.groupby('Topic')['Score']
             .agg(['mean', 'count', 'std'])
@@ -297,6 +82,7 @@ class ClassPerformanceAnalyzer:
         difficult_topics = topic_stats.nsmallest(3, 'Average').to_dict('index')
         easy_topics = topic_stats.nlargest(3, 'Average').to_dict('index')
 
+        # 4. Answer Quality Analysis
         try:
             student_vec = self.vectorizer.fit_transform(df['Student Answer'])
             ref_vec = self.vectorizer.transform(df['Reference Answer'])
@@ -305,6 +91,7 @@ class ClassPerformanceAnalyzer:
             print(f"⚠️ Similarity analysis error: {str(e)}")
             df['Similarity'] = 0
 
+        # 5. Topic Clustering
         try:
             X = self.vectorizer.fit_transform(df['Topic'])
             self.cluster_model.fit(X)
@@ -324,6 +111,7 @@ class ClassPerformanceAnalyzer:
             print(f"⚠️ Clustering error: {str(e)}")
             cluster_stats = []
 
+        # 6. Common Errors (New)
         student_answers = ' '.join(df['Student Answer'].astype(str)).lower()
         reference_answers = ' '.join(df['Reference Answer'].astype(str)).lower()
         
@@ -333,6 +121,7 @@ class ClassPerformanceAnalyzer:
         student_vocab = Counter(student_words)
         reference_vocab = Counter(reference_words)
         
+        # Words students use that aren't in reference answers
         common_errors = {
             word: count for word, count in student_vocab.items()
             if word not in reference_vocab and count > 5
@@ -637,33 +426,23 @@ class ClassPerformanceAnalyzer:
 </html>
         """
 
-@app.post("/generatePerformanceReport", response_class=HTMLResponse)
-async def generate_performance_report(request_data: PerformanceReportRequest):
-    """Generate comprehensive class performance report"""
-    try:
-        # Convert Pydantic model to dict for processing
-        submissions_data = [sub.dict() for sub in request_data.submissions]
-        
-        analyzer = ClassPerformanceAnalyzer()
-        df = analyzer.create_dataframe(submissions_data)
-        
-        if df.empty:
-            raise HTTPException(
-                status_code=400,
-                detail="No valid data to analyze - check your input structure"
-            )
-        
-        analysis = analyzer.analyze_class_performance(df)
-        return HTMLResponse(content=analyzer.generate_html_report(analysis))
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Report generation failed: {str(e)}"
-        )
-
+# Usage Example
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    analyzer = ClassPerformanceAnalyzer()
+    
+    # Replace with your CSV path
+    csv_path = "/content/student_answers_sample.csv"
+    
+    # Load and analyze data
+    df = analyzer.load_data(csv_path)
+    if df.empty:
+        print("Error loading data. Please check the CSV file.")
+    else:
+        analysis = analyzer.analyze_class_performance(df)
+        html_report = analyzer.generate_html_report(analysis)
+        
+        # Save report
+        with open("class_performance_report.html", "w", encoding="utf-8") as f:
+            f.write(html_report)
+        
+        print("Report generated successfully: class_performance_report.html")

@@ -7,7 +7,7 @@ const generateQuestions = async (req, res) => {
   const { topic, difficulty, questionTypes, numQuestions } = req.body;
   console.log("Request Body:", req.body);
   const client = await Client.connect(
-    "https://84d8135c05fbf778f8.gradio.live/"
+    "https://2535285a39f435cadc.gradio.live/"
   );
   try {
     const result = await client.predict("/predict", {
@@ -185,6 +185,76 @@ const checkAssignmentPlagiarism = async (req, res) => {
   }
 };
 
+const evaluate = async (req, res) => {
+  try {
+    const assignmentId = req.params.assignmentId;
+    console.log(assignmentId);
+
+    // Step 1: Get answer key
+    const assignment = await Assignment.findById(assignmentId);
+    
+    if (!assignment || !assignment.answerKeyUrl) {
+      return res.status(400).json({ error: "Answer key not found." });
+    }
+
+    // Step 2: Get submissions with status 'checked'
+    const submissions = await Submission.find({
+      assignmentId,
+      status: "checked",
+    });
+
+    if (submissions.length === 0) {
+      return res.status(400).json({ error: "No checked submissions to evaluate." });
+    }
+
+    const file_urls = submissions.map((s) => s.fileUrl);
+
+    // Step 3: Send to FastAPI
+    const fastapiResponse = await axios.post("http://localhost:8000/evaluate", {
+      file_urls,
+      answer_key: assignment.answerKeyUrl,
+    });
+
+    const evaluationResults = fastapiResponse.data.results;
+
+    // Step 4: Update each submission
+    for (let i = 0; i < submissions.length; i++) {
+      const submission = submissions[i];
+      const result = evaluationResults;
+
+      // Calculate the average score for this submission
+      const avgScore =
+        result && result.length > 0
+          ? result.reduce((sum, q) => sum + q.score, 0) / result.length
+          : 0;
+
+      // Generate the feedback string for this submission by concatenating feedback for each question
+
+
+      // Update the submission's grade and feedback
+      submission.grade = Math.round(avgScore * 20); // out of 100
+      submission.feedback = result
+        .map((q) => `Q${q.question}: ${q.topic} (${q.score}/5)`)
+        .join("; ");
+      submission.results = result; // ✅ Store full evaluation data
+      submission.status = "evaluated";
+      console.log(submission.feedback)
+      console.log(submission.results)
+
+      // Save the updated submission
+      await submission.save();
+    }
+
+    return res.json({
+      message: "Evaluation completed",
+      evaluated: submissions.length,
+    });
+  } catch (error) {
+    console.error("Evaluation Error:", error.message);
+    return res.status(500).json({ error: "Evaluation failed" });
+  }
+};
+
 const uploadAnswerKey = async (req, res) => {};
 const getProfile = async (req, res) => {
   try {
@@ -196,6 +266,80 @@ const getProfile = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+const getSubjects = async (req, res) => {
+  try {
+    const id = req.user._id;
+    const user = await User.findById(id);
+    res.status(200).json({ success: true, subjects: user.subjects });
+  } catch (error) {
+    console.error("Error fetching subjects of teacher:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+const getAssignmentForSubject = async (req, res) => {
+  try {
+    const id = req.user._id;
+    const { subject } = req.params;
+    if (!subject) {
+      return res.status(400).json({ error: "Subject ID is required" });
+    }
+    const filteredAssignments = await Assignment.find({
+      createdBy: id,
+      subject,
+    });
+    res.status(200).json({ success: true, assignments: filteredAssignments });
+  } catch (error) {
+    console.error("Error fetching subjects of teacher:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+const generateClassPerformance = async (req, res) => {
+  const {assignmentId } = req.body;
+  try {
+    const submissions = await Submission.find({
+      assignmentId
+    }).populate("studentId");
+    // console.log(submissions);
+    const reportData = {
+      submissions: submissions
+        .filter(sub => sub.status === 'evaluated')
+        .map(sub => ({
+          student_name: sub.studentId.name,
+          results: sub.results ? sub.results.map(result => ({
+            score: result.score,
+            topic: result.topic,
+            student_answer: result.student_answer,
+            reference_answer: result.reference_answer
+          })) : []
+        }))
+    };
+    // console.log(reportData);
+    const response = await axios.post(
+      "http://localhost:8000/generatePerformanceReport",
+      reportData,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/html",
+        },
+      }
+    );
+
+    res.set("Content-Type", "text/html");
+    res.send(response.data);
+  } catch (error) {
+    console.error("Detailed error:", {
+      message: error.message,
+      response: error.response?.data,
+      stack: error.stack,
+    });
+
+    res.status(error.response?.status || 500).json({
+      error: "Failed to generate performance report",
+      details: error.response?.data || error.message,
+    });
+  }
+};
 export {
   generateQuestions,
   getAllAssignments,
@@ -203,4 +347,8 @@ export {
   getSubmissions,
   uploadAnswerKey,
   getProfile,
+  getSubjects,
+  getAssignmentForSubject,
+  generateClassPerformance,
+  evaluate,
 };

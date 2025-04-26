@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Sparkles, Save, Copy, Trash, FileText, X } from "lucide-react";
 import axios from "axios";
+import { Document, Packer, Paragraph, TextRun } from "docx";
 export default function QuestionGenerator() {
   const [topic, setTopic] = useState("");
   const [difficultyLevel, setDifficultyLevel] = useState("medium");
@@ -9,14 +10,74 @@ export default function QuestionGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedQuestions, setGeneratedQuestions] = useState([]);
   const [savedQuestions, setSavedQuestions] = useState([]);
+  const downloadAsTxt = (questions) => {
+    const content = questions
+      .map((q, index) => {
+        let base = `Q${index + 1}: ${q.text}\nType: ${q.type}`;
+        if (q.hint) base += `\nHint: ${q.hint}`;
+        if (q.options && q.options.length > 0) {
+          base +=
+            `\nOptions:\n` +
+            q.options
+              .map((opt, i) => `  ${String.fromCharCode(65 + i)}. ${opt.text}`)
+              .join("\n");
+        }
+        return base;
+      })
+      .join("\n\n");
 
+    const blob = new Blob([content], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "generated_questions.txt";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Helper to download as .docx
+  // const downloadAsDocx = async (questions) => {
+  //   const doc = new Document();
+  //   const children = [];
+
+  //   questions.forEach((q, index) => {
+  //     children.push(
+  //       new Paragraph({ text: `Q${index + 1}: ${q.text}`, bold: true })
+  //     );
+  //     children.push(new Paragraph(`Type: ${q.type}`));
+  //     if (q.hint) children.push(new Paragraph(`Hint: ${q.hint}`));
+  //     if (q.options && q.options.length > 0) {
+  //       q.options.forEach((opt, i) => {
+  //         children.push(
+  //           new Paragraph(`  ${String.fromCharCode(65 + i)}. ${opt.text}`)
+  //         );
+  //       });
+  //     }
+  //     children.push(new Paragraph("")); // blank line
+  //   });
+
+  //   doc.addSection({ children });
+
+  //   const blob = await Packer.toBlob(doc);
+  //   const link = document.createElement("a");
+  //   link.href = URL.createObjectURL(blob);
+  //   link.download = "generated_questions.docx";
+  //   document.body.appendChild(link);
+  //   link.click();
+  //   document.body.removeChild(link);
+  // };
   // Available question types
   const availableQuestionTypes = [
     { id: "Conceptual", label: "Conceptual" },
     { id: "Application", label: "Application" },
     { id: "Numerical", label: "Numerical" },
   ];
-
+  const handleDeleteQuestion = (indexToDelete) => {
+    setGeneratedQuestions((prevQuestions) =>
+      prevQuestions.filter((_, index) => index !== indexToDelete)
+    );
+  };
+  
   // Handle question type selection
   const handleQuestionTypeToggle = (typeId) => {
     if (questionTypes.includes(typeId)) {
@@ -32,12 +93,15 @@ export default function QuestionGenerator() {
     setGeneratedQuestions([]);
 
     try {
-      const response = await axios.post("http://localhost:5000/api/generate-questions", {
-        topic,
-        difficulty:difficultyLevel,
-        questionTypes,
-        numQuestions: numberOfQuestions,
-      });
+      const response = await axios.post(
+        "http://localhost:5000/api/generateQuestions",
+        {
+          topic,
+          difficulty: difficultyLevel,
+          questionTypes,
+          numQuestions: numberOfQuestions,
+        }
+      );
       console.log("Generated Questions:", response.data);
       setGeneratedQuestions(response.data);
     } catch (error) {
@@ -231,6 +295,24 @@ export default function QuestionGenerator() {
             </ul>
           ) : (
             <p className="text-gray-600">No questions generated yet.</p>
+          )}
+          {generatedQuestions.length > 0 && (
+            <div className="mt-6 flex space-x-4">
+              <button
+                onClick={() => downloadAsTxt(generatedQuestions)}
+                className="btn btn-outline flex items-center space-x-2"
+              >
+                <FileText size={16} />
+                <span>Download as TXT</span>
+              </button>
+              {/* <button
+                onClick={() => downloadAsDocx(generatedQuestions)}
+                className="btn btn-outline flex items-center space-x-2"
+              >
+                <FileText size={16} />
+                <span>Download as Word</span>
+              </button> */}
+            </div>
           )}
         </div>
       </div>
