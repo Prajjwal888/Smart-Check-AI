@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import teacherRoute from "./routes/teacherRoutes.js";
+import studentRoute from "./routes/studentRoute.js";
 import authRoute from "./controllers/auth.js";
 import dotenv from 'dotenv'
 dotenv.config();
@@ -12,8 +13,12 @@ connectDB();
 const PORT = 5000;
 
 app.use("/api/auth", authRoute);
-app.use(teacherRoute);
+app.use("/api/teacher", teacherRoute);
+app.use("/api/student", studentRoute);
 
+app.get("/api/health", (_req, res) => {
+  return res.json({ status: "OK" });
+});
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
