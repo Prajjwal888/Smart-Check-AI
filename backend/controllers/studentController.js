@@ -11,7 +11,7 @@ cloudinary.config({
 });
 
 export const getAssignments = async (req, res) => {
-  console.log('REQ.USER:', req.user);
+  // console.log('REQ.USER:', req.user);
   try {
     
     const assignments = await Assignment
@@ -51,7 +51,7 @@ export const submitAssignment = async (req, res) => {
 
     
     const result = await cloudinary.uploader.upload_stream(
-      { resource_type: "auto", folder: "assignments" },
+      { resource_type: "auto", folder: "Smart-Check-AI" },
       async (error, cloudinaryResult) => {
         if (error) {
           return res.status(500).json({ error: "Failed to upload to Cloudinary." });

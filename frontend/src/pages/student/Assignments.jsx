@@ -6,18 +6,17 @@ export default function Assignments() {
   const [assignments, setAssignments] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState({}); // assignmentId -> file
   const [uploadProgress, setUploadProgress] = useState(0);
-
+  const fetchAssignments = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/student/getAssignments', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      setAssignments(response.data.assignments);
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+    }
+  };
   useEffect(() => {
-    const fetchAssignments = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/student/getAssignments', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
-        setAssignments(response.data.assignments);
-      } catch (error) {
-        console.error('Error fetching assignments:', error);
-      }
-    };
     fetchAssignments();
   }, []);
 
@@ -59,7 +58,7 @@ export default function Assignments() {
       setSelectedFiles((prev) => ({ ...prev, [assignmentId]: null }));
       alert("Assignment submitted successfully!");
       // Optionally refetch assignments/submissions here
-      // fetchAssignments();
+      fetchAssignments();
     } catch (err) {
       setUploadProgress(0);
       alert("Upload failed!");

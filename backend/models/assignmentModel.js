@@ -6,13 +6,14 @@ const assignmentSchema = new mongoose.Schema(
     description: { type: String },
     createdBy: {
       type: Schema.Types.ObjectId,
-      ref: "User",  
+      ref: "User",
       required: true,
     },
     fileUrl: { type: String, required: true },
     course: { type: String, required: true },
     subject: { type: String, required: true },
-    answerKeyUrl:{type:String,required:true},
+    answerKeyUrl: { type: String },
+    dueDate: { type: Date, required: true },
   },
   { timestamps: true }
 );

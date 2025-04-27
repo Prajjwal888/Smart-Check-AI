@@ -3,6 +3,7 @@ import Assignment from "../models/assignmentModel.js";
 import Submission from "../models/submissionModel.js";
 import axios from "axios";
 import User from "../models/userModel.js";
+import cloudinary from "../config/cloudinary.js";
 const generateQuestions = async (req, res) => {
   const { topic, difficulty, questionTypes, numQuestions } = req.body;
   console.log("Request Body:", req.body);
@@ -192,7 +193,7 @@ const evaluate = async (req, res) => {
 
     // Step 1: Get answer key
     const assignment = await Assignment.findById(assignmentId);
-    
+
     if (!assignment || !assignment.answerKeyUrl) {
       return res.status(400).json({ error: "Answer key not found." });
     }
@@ -204,7 +205,9 @@ const evaluate = async (req, res) => {
     });
 
     if (submissions.length === 0) {
-      return res.status(400).json({ error: "No checked submissions to evaluate." });
+      return res
+        .status(400)
+        .json({ error: "No checked submissions to evaluate." });
     }
 
     const file_urls = submissions.map((s) => s.fileUrl);
@@ -230,7 +233,6 @@ const evaluate = async (req, res) => {
 
       // Generate the feedback string for this submission by concatenating feedback for each question
 
-
       // Update the submission's grade and feedback
       submission.grade = Math.round(avgScore * 20); // out of 100
       submission.feedback = result
@@ -238,8 +240,8 @@ const evaluate = async (req, res) => {
         .join("; ");
       submission.results = result; // ✅ Store full evaluation data
       submission.status = "evaluated";
-      console.log(submission.feedback)
-      console.log(submission.results)
+      console.log(submission.feedback);
+      console.log(submission.results);
 
       // Save the updated submission
       await submission.save();
@@ -255,7 +257,45 @@ const evaluate = async (req, res) => {
   }
 };
 
-const uploadAnswerKey = async (req, res) => {};
+const uploadAnswerKey = async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded." });
+    }
+
+    const assignment = await Assignment.findById(assignmentId);
+    if (!assignment) {
+      return res.status(404).json({ error: "Assignment not found." });
+    }
+
+    cloudinary.uploader
+      .upload_stream(
+        { resource_type: "auto", folder: "Smart-Check-AI" },
+        async (error, cloudinaryResult) => {
+          if (error) {
+            return res
+              .status(500)
+              .json({ error: "Failed to upload to Cloudinary." });
+          }
+
+          assignment.answerKeyUrl = cloudinaryResult.secure_url;
+          await assignment.save();
+
+          res.status(201).json({
+            success: true,
+            message: "Answer key uploaded successfully!",
+            fileUrl: cloudinaryResult.secure_url,
+          });
+        }
+      )
+      .end(req.file.buffer);
+  } catch (err) {
+    console.error("Error uploading answer key:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
+};
 const getProfile = async (req, res) => {
   try {
     const id = req.user._id;
@@ -294,24 +334,26 @@ const getAssignmentForSubject = async (req, res) => {
   }
 };
 const generateClassPerformance = async (req, res) => {
-  const {assignmentId } = req.body;
+  const { assignmentId } = req.body;
   try {
     const submissions = await Submission.find({
-      assignmentId
+      assignmentId,
     }).populate("studentId");
     // console.log(submissions);
     const reportData = {
       submissions: submissions
-        .filter(sub => sub.status === 'evaluated')
-        .map(sub => ({
+        .filter((sub) => sub.status === "evaluated")
+        .map((sub) => ({
           student_name: sub.studentId.name,
-          results: sub.results ? sub.results.map(result => ({
-            score: result.score,
-            topic: result.topic,
-            student_answer: result.student_answer,
-            reference_answer: result.reference_answer
-          })) : []
-        }))
+          results: sub.results
+            ? sub.results.map((result) => ({
+                score: result.score,
+                topic: result.topic,
+                student_answer: result.student_answer,
+                reference_answer: result.reference_answer,
+              }))
+            : [],
+        })),
     };
     // console.log(reportData);
     const response = await axios.post(
@@ -340,6 +382,51 @@ const generateClassPerformance = async (req, res) => {
     });
   }
 };
+const uploadAssignment = async (req, res) => {
+  try {
+    const { title, subject, dueDate, description, course } = req.body;
+    const teacherId = req.user._id;
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded." });
+    }
+
+    const uploadToCloudinary = () => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { resource_type: "auto", folder: "Smart-Check-AI/Assignments" },
+          (error, result) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(result);
+            }
+          }
+        );
+        stream.end(req.file.buffer);
+      });
+    };
+
+    const cloudinaryResult = await uploadToCloudinary();
+
+    // Save assignment details to DB
+    const newAssignment = new Assignment({
+      title,
+      subject,
+      dueDate,
+      description,
+      course,
+      fileUrl: cloudinaryResult.secure_url,
+      createdBy: teacherId,
+    });
+
+    await newAssignment.save();
+
+    res.status(201).json({ success: true, assignment: newAssignment });
+  } catch (err) {
+    console.error("Error uploading assignment:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
+};
 export {
   generateQuestions,
   getAllAssignments,
@@ -351,4 +438,5 @@ export {
   getAssignmentForSubject,
   generateClassPerformance,
   evaluate,
+  uploadAssignment,
 };

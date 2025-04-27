@@ -85,31 +85,32 @@ export default function AnswerEvaluation() {
     setFile(e.target.files[0]);
   };
 
-  // const handleUploadAnswerKey = async () => {
-  //   if (!file || !selectedAssignment) {
-  //     setError("Please select an assignment and upload a file.");
-  //     return;
-  //   }
+  const handleUploadAnswerKey = async () => {
+    if (!file || !selectedAssignment) {
+      setError("Please select an assignment and upload a file.");
+      return;
+    }
 
-  //   const formData = new FormData();
-  //   formData.append("file", file);
+    const formData = new FormData();
+    formData.append("file", file);
 
-  //   setUploadingAnswerKey(true);
-  //   setError(null);
-  //   try {
-  //     await axios.post(
-  //       `http://localhost:5000/api/assignments/${selectedAssignment}/answerKey`,
-  //       formData,
-  //       { headers: { Authorization: `Bearer ${token}` } }
-  //     );
-  //     alert("Answer key uploaded successfully!");
-  //   } catch (err) {
-  //     setError("Failed to upload answer key");
-  //     console.error("Error uploading answer key", err);
-  //   } finally {
-  //     setUploadingAnswerKey(false);
-  //   }
-  // };
+    setUploadingAnswerKey(true);
+    setError(null);
+    // console.log(selectedAssignment);
+    try {
+      await axios.post(
+        `http://localhost:5000/api/uploadAnswerKey/${selectedAssignment}`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert("Answer key uploaded successfully!");
+    } catch (err) {
+      setError("Failed to upload answer key");
+      console.error("Error uploading answer key", err);
+    } finally {
+      setUploadingAnswerKey(false);
+    }
+  };
 
   const handleEvaluateSubmissions = async () => {
     if (!selectedAssignment) {
@@ -206,7 +207,7 @@ export default function AnswerEvaluation() {
               />
             </div>
 
-            {/* <button
+            <button
               onClick={handleUploadAnswerKey}
               disabled={uploadingAnswerKey || !file || !selectedAssignment}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
@@ -222,7 +223,7 @@ export default function AnswerEvaluation() {
                   Upload Answer Key
                 </>
               )}
-            </button> */}
+            </button>
           </div>
         </div>
       </div>
