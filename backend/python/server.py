@@ -55,7 +55,6 @@ class EvaluationRequest(BaseModel):
     answer_key: str
 
 def extract_text_from_pdf(pdf_content: bytes) -> str:
-    """Extract text from PDF content with error handling"""
     try:
         text = ""
         with BytesIO(pdf_content) as pdf_file:
@@ -63,7 +62,8 @@ def extract_text_from_pdf(pdf_content: bytes) -> str:
             for page in reader.pages:
                 page_text = page.extract_text()
                 if page_text:
-                    text += page_text + "\n"
+                    # Handle encoding errors here
+                    text += page_text.encode("utf-8", errors="replace").decode("utf-8") + "\n"
         return text.strip()
     except Exception as e:
         raise HTTPException(400, f"PDF processing failed: {str(e)}")
@@ -144,7 +144,7 @@ async def evaluate_submissions(request: EvaluationRequest):
             os.unlink(temp_pdf.name)
 
         # Flatten student answers and write to file
-        with open(student_text_path, "w") as f:
+        with open(student_text_path, "w",encoding="utf-8") as f:
             for line in all_student_answers[0]:  # Only evaluating the first student
                 f.write(line + "\n")
 
@@ -159,7 +159,7 @@ async def evaluate_submissions(request: EvaluationRequest):
         answer_key_text = extract_text(temp_pdf.name)
         os.unlink(temp_pdf.name)
 
-        with open(answer_key_path, "w") as f:
+        with open(answer_key_path, "w", encoding="utf-8") as f:
             for line in answer_key_text.strip().splitlines():
                 if line.strip():
                     f.write(line.strip() + "\n")
@@ -172,7 +172,9 @@ async def evaluate_submissions(request: EvaluationRequest):
                 "answer_key": answer_key_path
             }),
             capture_output=True,
-            text=True
+            text=True,
+            encoding="utf-8",
+            env={**os.environ, "PYTHONUTF8": "1"} 
         )
 
         shutil.rmtree(temp_dir)
@@ -654,7 +656,7 @@ async def generate_performance_report(request_data: PerformanceReportRequest):
             )
         
         analysis = analyzer.analyze_class_performance(df)
-        return HTMLResponse(content=analyzer.generate_html_report(analysis))
+        return HTMLResponse(content=analyzer.generate_html_report(analysis), headers={"Content-Type": "text/html; charset=utf-8"})
 
     except HTTPException:
         raise

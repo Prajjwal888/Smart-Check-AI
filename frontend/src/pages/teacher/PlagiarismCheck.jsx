@@ -107,7 +107,7 @@ export default function PlagiarismCheck() {
   };
 
   const hasPendingSubmissions = submissions.some(
-    (sub) => sub.status === "pending"
+    (sub) => (sub.status === "submitted")
   );
 
   return (

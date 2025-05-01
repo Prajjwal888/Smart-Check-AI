@@ -8,7 +8,7 @@ const generateQuestions = async (req, res) => {
   const { topic, difficulty, questionTypes, numQuestions } = req.body;
   console.log("Request Body:", req.body);
   const client = await Client.connect(
-    "https://2535285a39f435cadc.gradio.live/"
+    "https://e43eb8ecf29644e79b.gradio.live/"
   );
   try {
     const result = await client.predict("/predict", {

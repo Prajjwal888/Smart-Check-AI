@@ -1,6 +1,6 @@
 import sys
 import json
-import os
+import re
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
@@ -8,7 +8,7 @@ from nltk.stem import WordNetLemmatizer
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Download necessary NLTK data (quietly)
+# Download necessary NLTK data
 nltk.download('punkt', quiet=True)
 nltk.download('stopwords', quiet=True)
 nltk.download('wordnet', quiet=True)
@@ -28,38 +28,102 @@ def preprocess(text):
 
 def evaluate(student_file, answer_key):
     try:
-        with open(student_file) as sf, open(answer_key) as ak:
-            student_answers = [line.strip() for line in sf if line.strip()]
-            reference_answers = [line.strip() for line in ak if line.strip()]
+        with open(student_file, encoding="utf-8") as sf, open(answer_key, encoding="utf-8") as ak:
+            student_text = sf.read()
+            reference_text = ak.read()
 
-        if len(student_answers) != len(reference_answers):
-            raise ValueError("Mismatch in number of answers")
+        # Enhanced question splitting pattern
+        question_pattern = r'''
+            (?<!\#)                     # Negative lookbehind for #
+            \n                          # New line
+            (?=                         # Lookahead for question markers
+                (?:Q\.?\s*\d+\b)        # Q1, Q.1, Q 1
+                |(?:Question\s+\d+\b)   # Question 1
+                |(?:^\d+[\.\)]\s)       # 1., 1)
+                |(?:^\[\d+\]\s)         # [1]
+            )
+        '''
+
+        # Split and filter blocks for both student and reference
+        def process_blocks(text):
+            raw_blocks = re.split(question_pattern, text, 
+                                flags=re.VERBOSE|re.IGNORECASE|re.MULTILINE)
+            question_block_re = re.compile(
+                r'^\s*(Q\.?|Question|\d+[.)]|\[\d+\])', 
+                re.IGNORECASE | re.MULTILINE
+            )
+            return [b.strip() for b in raw_blocks 
+                   if b.strip() and question_block_re.search(b)]
+
+        student_blocks = process_blocks(student_text)
+        reference_blocks = process_blocks(reference_text)
+
+        # Answer extraction function
+        def extract_answers(blocks):
+            answers = []
+            answer_pattern = re.compile(
+                r'(?i)(?:answer|ans|solution)[\s:\-]*((?:.(?!\b(?:Q|Question)\b))*.+)',
+                re.DOTALL
+            )
+            for block in blocks:
+                match = answer_pattern.search(block)
+                if match:
+                    answer = match.group(1).strip()
+                    answer = '\n'.join([p.strip() for p in answer.split('\n') if p.strip()])
+                    answers.append(answer)
+                else:
+                    answers.append("")  # Mark missing answers
+            return answers
+
+        student_answers = extract_answers(student_blocks)
+        reference_answers = extract_answers(reference_blocks)
 
         results = []
+        # Process based on reference answer length
+        for idx in range(1, len(reference_answers) + 1):
+            try:
+                stud = student_answers[idx-1] if idx <= len(student_answers) else ""
+                ref = reference_answers[idx-1]
+            except IndexError:
+                stud = ""
+                ref = ""
 
-        for idx, (stud, ref) in enumerate(zip(student_answers, reference_answers), 1):
             clean_stud = preprocess(stud)
             clean_ref = preprocess(ref)
 
             if not clean_stud or not clean_ref:
                 score = 0.0
-                topic = "Error"
+                similarity = 0.0
+                topic = "Missing Answer" if not clean_stud else "Error"
             else:
-                emb_stud = model.encode(clean_stud)
-                emb_ref = model.encode(clean_ref)
-                raw_score = cosine_similarity([emb_stud], [emb_ref])[0][0]
-                score = float(raw_score)  # 🛠 Convert to native Python float
-                keywords = set(clean_ref.split()) - stop_words
-                topic = ", ".join(sorted(keywords)[:3]) or "General"
+                try:
+                    emb_stud = model.encode(clean_stud)
+                    emb_ref = model.encode(clean_ref)
+                    raw_score = cosine_similarity([emb_stud], [emb_ref])[0][0]
+                    score = float(raw_score)
+                    similarity = round(score * 100, 2)
+                    score = round(min(score * 5, 5.0), 2)
+                    keywords = set(clean_ref.split()) - stop_words
+                    topic = ", ".join(sorted(keywords)[:3]) or "General"
+                except Exception as e:
+                    print(f"⚠️ Scoring error for Q{idx}: {str(e)}", file=sys.stderr)
+                    score = 0.0
+                    similarity = 0.0
+                    topic = "Scoring Error"
 
             results.append({
                 "question": idx,
-                "score": round(min(score * 5, 5.0), 2),
-                "similarity": round(score * 100, 2),
+                "score": score,
+                "similarity": similarity,
                 "topic": topic,
                 "student_answer": stud,
                 "reference_answer": ref
             })
+
+        # Handle question count mismatch
+        if len(student_answers) != len(reference_answers):
+            print(f"⚠️ Question mismatch: Student {len(student_answers)} vs Reference {len(reference_answers)}", 
+                  file=sys.stderr)
 
         print(json.dumps(results))
 

@@ -27,9 +27,9 @@ export default function LoginPage() {
 
 
       if (role === "student") {
-        navigate("/student/dashboard");
+        navigate("/student/profile");
       } else {
-        navigate("/teacher/dashboard");
+        navigate("/teacher/profile");
       }
     } catch (err) {
       alert("Invalid ID or password");
