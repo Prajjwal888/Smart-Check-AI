@@ -8,7 +8,7 @@ const generateQuestions = async (req, res) => {
   const { topic, difficulty, questionTypes, numQuestions } = req.body;
   console.log("Request Body:", req.body);
   const client = await Client.connect(
-    "https://e43eb8ecf29644e79b.gradio.live/"
+    "https://ee47b4eebc90df0e12.gradio.live/"
   );
   try {
     const result = await client.predict("/predict", {
@@ -100,10 +100,13 @@ const checkAssignmentPlagiarism = async (req, res) => {
     }
     // console.log(submissions);
     // Call Python API
-    const response = await axios.post("http://127.0.0.1:8000/checkPlagiarism", {
-      file_urls: submissions.map((sub) => sub.fileUrl),
-      threshold: PLAGIARISM_THRESHOLD,
-    });
+    const response = await axios.post(
+      "https://smart-check-ai-python.onrender.com/checkPlagiarism",
+      {
+        file_urls: submissions.map((sub) => sub.fileUrl),
+        threshold: PLAGIARISM_THRESHOLD,
+      }
+    );
     // console.log(response.data);
 
     const similarityResults = response.data.results;
@@ -213,10 +216,13 @@ const evaluate = async (req, res) => {
     const file_urls = submissions.map((s) => s.fileUrl);
 
     // Step 3: Send to FastAPI
-    const fastapiResponse = await axios.post("http://localhost:8000/evaluate", {
-      file_urls,
-      answer_key: assignment.answerKeyUrl,
-    });
+    const fastapiResponse = await axios.post(
+      "https://smart-check-ai-python.onrender.com/evaluate",
+      {
+        file_urls,
+        answer_key: assignment.answerKeyUrl,
+      }
+    );
 
     const evaluationResults = fastapiResponse.data.results;
 
@@ -357,7 +363,7 @@ const generateClassPerformance = async (req, res) => {
     };
     // console.log(reportData);
     const response = await axios.post(
-      "http://localhost:8000/generatePerformanceReport",
+      "https://smart-check-ai-python.onrender.com/generatePerformanceReport",
       reportData,
       {
         headers: {

@@ -17,11 +17,14 @@ export default function AssignmentCreator() {
   useEffect(() => {
     const fetchSubjects = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/getSubjects", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+        const res = await axios.get(
+          "https://smart-check-ai-backend.onrender.com/api/getSubjects",
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
         setAvailableSubjects(res.data.subjects || []);
       } catch (error) {
         console.error("Failed to fetch subjects:", error);
@@ -68,7 +71,7 @@ export default function AssignmentCreator() {
     console.log(assignmentDetails.file);
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/uploadAssignment",
+        "https://smart-check-ai-backend.onrender.com/api/uploadAssignment",
         formData,
         {
           headers: {

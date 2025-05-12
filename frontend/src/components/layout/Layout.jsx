@@ -1,19 +1,38 @@
-import { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
-import { Menu, X, Bell, Sun, Moon, Search, User } from 'lucide-react';
-import Sidebar from './Sidebar';
-import { useAppContext } from '../../context/AppContext';
-
+import { useEffect, useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
+import { Menu, X, Bell, Sun, Moon, Search, User } from "lucide-react";
+import Sidebar from "./Sidebar";
+import { useAppContext } from "../../context/AppContext";
+import axios from "axios";
 export default function Layout({ userRole }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const { user, notifications, isDarkMode, toggleDarkMode } = useAppContext();
+  const { notifications, isDarkMode, toggleDarkMode } = useAppContext();
+  const [user, setUser] = useState();
   const navigate = useNavigate();
-
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const response = await axios.get(
+          "https://smart-check-ai-backend.onrender.com/getProfile",
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        setUser(response.data.profile);
+        console.log(response.data.profile);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    loadData();
+  }, []);
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const toggleSearch = () => setSearchOpen(!searchOpen);
 
-  const unreadNotifications = notifications.filter(n => !n.read).length;
+  const unreadNotifications = notifications.filter((n) => !n.read).length;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -29,19 +48,21 @@ export default function Layout({ userRole }) {
                 {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
               <div className="flex-shrink-0 flex items-center">
-                <span className="text-xl font-semibold text-primary-600">SmartCheck AI</span>
+                <span className="text-xl font-semibold text-primary-600">
+                  SmartCheck AI
+                </span>
               </div>
             </div>
 
             <div className="flex items-center space-x-4">
-              <button 
+              <button
                 onClick={toggleSearch}
                 className="p-2 rounded-full text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <Search size={20} />
               </button>
 
-              <button 
+              <button
                 onClick={toggleDarkMode}
                 className="p-2 rounded-full text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
@@ -61,8 +82,8 @@ export default function Layout({ userRole }) {
 
               <div className="flex items-center space-x-2">
                 {user ? (
-                  <button 
-                    onClick={() => navigate(`/${userRole}/profile`)}
+                  <button
+                    onClick={() => navigate(`/${user.role}/profile`)}
                     className="flex items-center space-x-2 hover:bg-gray-100 rounded-lg p-2"
                   >
                     <img
@@ -70,7 +91,9 @@ export default function Layout({ userRole }) {
                       src={user.avatar}
                       alt={user.name}
                     />
-                    <span className="hidden md:block text-sm font-medium">{user.name}</span>
+                    <span className="hidden md:block text-sm font-medium">
+                      {user.name}
+                    </span>
                   </button>
                 ) : (
                   <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100">
@@ -96,11 +119,18 @@ export default function Layout({ userRole }) {
             <div className="relative">
               <input
                 type="text"
-                placeholder={`Search ${userRole === 'teacher' ? 'students, assignments...' : 'assignments, feedback...'}`}
+                placeholder={`Search ${
+                  user.role === "teacher"
+                    ? "students, assignments..."
+                    : "assignments, feedback..."
+                }`}
                 className="form-input pl-10"
                 autoFocus
               />
-              <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+              <Search
+                className="absolute left-3 top-2.5 text-gray-400"
+                size={20}
+              />
             </div>
           </div>
         </div>
@@ -108,8 +138,8 @@ export default function Layout({ userRole }) {
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        <Sidebar 
-          isOpen={sidebarOpen} 
+        <Sidebar
+          isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           userRole={userRole}
         />

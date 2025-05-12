@@ -20,11 +20,11 @@ export default function Assignments() {
 
   // Fetch both assignments and submissions
   const fetchData = useCallback(async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       // Fetch assignments
       const assignmentsRes = await axios.get(
-        "http://localhost:5000/api/student/getAssignments",
+        "https://smart-check-ai-backend.onrender.com/api/student/getAssignments",
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }
@@ -32,7 +32,7 @@ export default function Assignments() {
 
       // Fetch submissions for these assignments
       const submissionsRes = await axios.get(
-        "http://localhost:5000/api/student/getSubmissions",
+        "https://smart-check-ai-backend.onrender.com/api/student/getSubmissions",
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }
@@ -83,7 +83,7 @@ export default function Assignments() {
       setSuccess(null);
 
       await axios.post(
-        "http://localhost:5000/api/student/submitAssignment",
+        "https://smart-check-ai-backend.onrender.com/api/student/submitAssignment",
         formData,
         {
           headers: {
@@ -123,7 +123,7 @@ export default function Assignments() {
     // Map backend status to frontend display status
     switch (submission.status) {
       case "submitted":
-        return "submitted"
+        return "submitted";
       case "checked":
         return "submitted";
       case "evaluated":
@@ -280,7 +280,7 @@ export default function Assignments() {
                         )}
 
                       {/* Show pending grade if submitted but not graded */}
-                      {(status === "submitted"||status==="pending") &&
+                      {(status === "submitted" || status === "pending") &&
                         (!submission || submission.grade === undefined) && (
                           <div className="mt-2 flex items-center text-sm text-gray-500">
                             <Clock className="h-4 w-4 mr-1" />
@@ -294,7 +294,7 @@ export default function Assignments() {
                     {/* <button className="btn bg-white border border-gray-300 hover:bg-gray-50 text-gray-700">
                       View Details
                     </button> */}
-                    {["pending","flagged", "late"].includes(status) && (
+                    {["pending", "flagged", "late"].includes(status) && (
                       <>
                         <label
                           htmlFor={`file-upload-${assignment._id}`}

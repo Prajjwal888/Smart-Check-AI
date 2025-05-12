@@ -77,7 +77,7 @@ export default function QuestionGenerator() {
       prevQuestions.filter((_, index) => index !== indexToDelete)
     );
   };
-  
+
   // Handle question type selection
   const handleQuestionTypeToggle = (typeId) => {
     if (questionTypes.includes(typeId)) {
@@ -94,7 +94,7 @@ export default function QuestionGenerator() {
 
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/generateQuestions",
+        "https://smart-check-ai-backend.onrender.com/api/generateQuestions",
         {
           topic,
           difficulty: difficultyLevel,

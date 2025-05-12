@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true },
     email: { type: String, required: true },
     password: { type: String, required: true },
-    subjects: [{ type: String }], //taught by teachers and for students the subjects under the course
+    subjects: [{ type: String }],
     department: { type: String }, 
     profilePic: { type: String },
     phoneNumber: { type: String },

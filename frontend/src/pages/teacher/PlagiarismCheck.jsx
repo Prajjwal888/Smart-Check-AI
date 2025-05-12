@@ -20,7 +20,7 @@ export default function PlagiarismCheck() {
       setError(null);
       try {
         const res = await axios.get(
-          "http://localhost:5000/api/getAssignments",
+          "https://smart-check-ai-backend.onrender.com/api/getAssignments",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -50,7 +50,7 @@ export default function PlagiarismCheck() {
       setError(null);
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/getSubmissions/${selectedAssignment}`,
+          `https://smart-check-ai-backend.onrender.com/api/getSubmissions/${selectedAssignment}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -78,7 +78,8 @@ export default function PlagiarismCheck() {
 
     try {
       const res = await axios.post(
-        `http://localhost:5000/api/checkPlagiarism/${selectedAssignment}`,{},
+        `https://smart-check-ai-backend.onrender.com/api/checkPlagiarism/${selectedAssignment}`,
+        {},
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -107,7 +108,7 @@ export default function PlagiarismCheck() {
   };
 
   const hasPendingSubmissions = submissions.some(
-    (sub) => (sub.status === "submitted")
+    (sub) => sub.status === "submitted"
   );
 
   return (

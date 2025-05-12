@@ -19,7 +19,7 @@ export default function TeacherProfile() {
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          "http://localhost:5000/api/getProfile",
+          "https://smart-check-ai-backend.onrender.com/api/getProfile",
           {
             headers: {
               Authorization: `Bearer ${token}`,

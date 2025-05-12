@@ -57,7 +57,6 @@ def evaluate(student_file, answer_key):
 
         student_blocks = process_blocks(student_text)
         reference_blocks = process_blocks(reference_text)
-
         # Answer extraction function
         def extract_answers(blocks):
             answers = []
@@ -106,7 +105,7 @@ def evaluate(student_file, answer_key):
                     keywords = set(clean_ref.split()) - stop_words
                     topic = ", ".join(sorted(keywords)[:3]) or "General"
                 except Exception as e:
-                    print(f"⚠️ Scoring error for Q{idx}: {str(e)}", file=sys.stderr)
+                    print(f"Scoring error for Q{idx}: {str(e)}", file=sys.stderr)
                     score = 0.0
                     similarity = 0.0
                     topic = "Scoring Error"
@@ -122,7 +121,7 @@ def evaluate(student_file, answer_key):
 
         # Handle question count mismatch
         if len(student_answers) != len(reference_answers):
-            print(f"⚠️ Question mismatch: Student {len(student_answers)} vs Reference {len(reference_answers)}", 
+            print(f"Question mismatch: Student {len(student_answers)} vs Reference {len(reference_answers)}", 
                   file=sys.stderr)
 
         print(json.dumps(results))

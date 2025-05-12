@@ -9,7 +9,7 @@ export default function FeedbackAnalysis() {
   const [reportHtml, setReportHtml] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const token=localStorage.getItem("token");
+  const token = localStorage.getItem("token");
   useEffect(() => {
     fetchSubjects();
   }, []);
@@ -17,7 +17,7 @@ export default function FeedbackAnalysis() {
   const fetchSubjects = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/getSubjects",
+        "https://smart-check-ai-backend.onrender.com/api/getSubjects",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -35,7 +35,7 @@ export default function FeedbackAnalysis() {
   const fetchAssignments = async (subject) => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/getAssignment/${subject}`,
+        `https://smart-check-ai-backend.onrender.com/api/getAssignment/${subject}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -54,14 +54,19 @@ export default function FeedbackAnalysis() {
     setLoading(true);
     setError("");
     try {
-      const response = await axios.post("http://localhost:5000/api/generateClassReport", {
-        subject:selectedSubject,assignmentId
-      },{
-        headers:{
-          Authorization:`Bearer ${token}`
+      const response = await axios.post(
+        "https://smart-check-ai-backend.onrender.com/api/generateClassReport",
+        {
+          subject: selectedSubject,
+          assignmentId,
         },
-        responseType: "text",
-      });
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          responseType: "text",
+        }
+      );
       setReportHtml(response.data);
     } catch (err) {
       setError("Failed to generate report");

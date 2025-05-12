@@ -13,18 +13,20 @@ export default function LoginPage() {
 
     // You can add validation or authentication here
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/login", {
-        email: email,
-        password,
-        role,
-      });
+      const res = await axios.post(
+        "https://smart-check-ai-backend.onrender.com/api/auth/login",
+        {
+          email: email,
+          password,
+          role,
+        }
+      );
 
       const { token } = res.data;
       localStorage.setItem("token", token);
 
       const payload = JSON.parse(atob(token.split(".")[1]));
       setRole(payload.role);
-
 
       if (role === "student") {
         navigate("/student/profile");
@@ -35,19 +37,33 @@ export default function LoginPage() {
       alert("Invalid ID or password");
     }
   };
-  
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#f0f4ff] to-white">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-8">
         <div className="flex justify-center mb-6">
           <div className="bg-blue-100 text-blue-600 p-4 rounded-full">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 20h9" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 20h9"
+              />
             </svg>
           </div>
         </div>
-        <h2 className="text-center text-2xl font-semibold mb-1">Welcome Back</h2>
-        <p className="text-center text-gray-500 mb-6">Please sign in to your account</p>
+        <h2 className="text-center text-2xl font-semibold mb-1">
+          Welcome Back
+        </h2>
+        <p className="text-center text-gray-500 mb-6">
+          Please sign in to your account
+        </p>
 
         <div className="flex justify-center space-x-4 mb-6">
           <button
@@ -80,7 +96,10 @@ export default function LoginPage() {
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700"
+            >
               Email
             </label>
             <input
@@ -93,7 +112,10 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700"
+            >
               Password
             </label>
             <input
@@ -138,5 +160,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-

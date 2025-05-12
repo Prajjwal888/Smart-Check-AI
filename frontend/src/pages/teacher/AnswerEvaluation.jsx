@@ -23,7 +23,6 @@ export default function AnswerEvaluation() {
     student: "",
   });
 
-
   // Fetch assignments created by the current teacher
   useEffect(() => {
     const fetchAssignments = async () => {
@@ -31,7 +30,7 @@ export default function AnswerEvaluation() {
       setError(null);
       try {
         const res = await axios.get(
-          "http://localhost:5000/api/getAssignments",
+          "https://smart-check-ai-backend.onrender.com/api/getAssignments",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -62,7 +61,7 @@ export default function AnswerEvaluation() {
       setError(null);
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/getSubmissions/${selectedAssignment}`,
+          `https://smart-check-ai-backend.onrender.com/api/getSubmissions/${selectedAssignment}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -99,7 +98,7 @@ export default function AnswerEvaluation() {
     // console.log(selectedAssignment);
     try {
       await axios.post(
-        `http://localhost:5000/api/uploadAnswerKey/${selectedAssignment}`,
+        `https://smart-check-ai-backend.onrender.com/api/uploadAnswerKey/${selectedAssignment}`,
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -122,16 +121,14 @@ export default function AnswerEvaluation() {
     setError(null);
     try {
       await axios.post(
-        `http://localhost:5000/api/evaluate/${selectedAssignment}`,
+        `https://smart-check-ai-backend.onrender.com/api/evaluate/${selectedAssignment}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      
-
       // Refresh submissions after evaluation
       const res = await axios.get(
-        `http://localhost:5000/api/getSubmissions/${selectedAssignment}`,
+        `https://smart-check-ai-backend.onrender.com/api/getSubmissions/${selectedAssignment}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -144,10 +141,6 @@ export default function AnswerEvaluation() {
       setEvaluating(false);
     }
   };
-
-
-
-
 
   return (
     <div className="container mx-auto p-4 animate-fade-in">
@@ -243,60 +236,63 @@ export default function AnswerEvaluation() {
         )}
 
         {submissions
-         .filter((submission) => submission.status === "evaluated" || submission.status === "checked")
-         .map(
-          (submission) =>(
-              <div
-                key={submission._id}
-                className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
-                  <div>
-                    <h3 className="font-semibold text-lg">
-                      {submission.studentId?.name || "Unknown Student"}
-                    </h3>
-                    <p className="text-gray-600 text-sm">
-                      {submission.studentId?.email || "No email"}
-                    </p>
-                  </div>
+          .filter(
+            (submission) =>
+              submission.status === "evaluated" ||
+              submission.status === "checked"
+          )
+          .map((submission) => (
+            <div
+              key={submission._id}
+              className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {submission.studentId?.name || "Unknown Student"}
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    {submission.studentId?.email || "No email"}
+                  </p>
+                </div>
 
-                  <div className="flex flex-col sm:items-end gap-1">
-                    <span
-                      className={`px-2 py-1 text-xs sm:text-sm rounded-md ${
-                        submission.status === "flagged"
-                          ? "bg-red-100 text-red-800"
-                          : submission.status === "evaluated"
-                          ? "bg-green-100 text-green-800"
-                          : submission.status === "late"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {submission.status}
-                    </span>
-                    {/* {submission.grade !== undefined && (
+                <div className="flex flex-col sm:items-end gap-1">
+                  <span
+                    className={`px-2 py-1 text-xs sm:text-sm rounded-md ${
+                      submission.status === "flagged"
+                        ? "bg-red-100 text-red-800"
+                        : submission.status === "evaluated"
+                        ? "bg-green-100 text-green-800"
+                        : submission.status === "late"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {submission.status}
+                  </span>
+                  {/* {submission.grade !== undefined && (
                       <span className="text-sm font-medium">
                         Grade: {submission.grade}%
                       </span>
                     )} */}
-                  </div>
                 </div>
+              </div>
 
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText className="w-4 h-4" />
-                  <a
-                    href={submission.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline text-sm"
-                  >
-                    View Submission File
-                  </a>
-                </div>
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="w-4 h-4" />
+                <a
+                  href={submission.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline text-sm"
+                >
+                  View Submission File
+                </a>
+              </div>
 
-                {/* Evaluation info */}
-                {submission.status === "evaluated" && (
-                  <div className="bg-gray-50 p-3 rounded-lg">
+              {/* Evaluation info */}
+              {submission.status === "evaluated" && (
+                <div className="bg-gray-50 p-3 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <BarChart className="w-4 h-4" />
@@ -307,16 +303,16 @@ export default function AnswerEvaluation() {
                         setSelectedFeedback({
                           grade: submission.grade,
                           // feedback: submission.feedback,
-                          student: submission.studentId?.name || "Unknown Student",
+                          student:
+                            submission.studentId?.name || "Unknown Student",
                         }) || setShowModal(true)
                       }
                       className="text-blue-600 hover:underline text-sm"
                     >
                       View Result
                     </button>
-
                   </div>
-                
+
                   {/* {submission.feedback && (
                     <div className="mt-2 text-sm text-gray-700">
                       <p className="font-medium">Feedback:</p>
@@ -324,11 +320,9 @@ export default function AnswerEvaluation() {
                     </div>
                   )} */}
                 </div>
-                
-                )}
-              </div>
-            )
-        )}
+              )}
+            </div>
+          ))}
       </div>
       {/* Evaluate Submissions Section */}
       <div className="border-t pt-4">
@@ -363,8 +357,7 @@ export default function AnswerEvaluation() {
           </div>
         )}
 
-
-        {/* Modal for viewing feedback */}
+      {/* Modal for viewing feedback */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
@@ -392,7 +385,6 @@ export default function AnswerEvaluation() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
