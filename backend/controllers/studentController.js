@@ -42,7 +42,7 @@ export const getSubmissions = async (req, res) => {
   try {
     // console.log(req.user);
     const studentId = req.user._id;
-    const submissions = await Submission.find({ studentId });
+    const submissions = await Submission.find({ studentId }).populate('assignmentId');
     // .populate("createdBy", "name email")
     res.status(200).json({ success: true, submissions: submissions });
   } catch (err) {

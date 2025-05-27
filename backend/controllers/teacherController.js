@@ -433,6 +433,18 @@ const uploadAssignment = async (req, res) => {
     res.status(500).json({ error: "Internal server error." });
   }
 };
+const getRecentSubmissions=async (req,res)=>{
+try {
+    const submissions = await Submission.find()
+      .sort({ createdAt: -1 })
+      .limit(15)
+      .populate('studentId', 'name')
+      .populate('assignmentId', 'title subject dueDate');
+    res.json(submissions);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch recent submissions' });
+  }
+}
 export {
   generateQuestions,
   getAllAssignments,
@@ -445,4 +457,5 @@ export {
   generateClassPerformance,
   evaluate,
   uploadAssignment,
+  getRecentSubmissions
 };

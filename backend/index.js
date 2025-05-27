@@ -12,8 +12,8 @@ app.use(express.json());
 connectDB();
 const PORT = 5000;
 
+app.use("/api", teacherRoute);
 app.use("/api/auth", authRoute);
-app.use("/", teacherRoute);
 app.use("/api/student", studentRoute);
 
 app.get("/api/health", (_req, res) => {
