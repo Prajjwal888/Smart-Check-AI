@@ -37,6 +37,7 @@ const submissionSchema = new mongoose.Schema(
         topic: { type: String },
         student_answer: { type: String },
         reference_answer: { type: String },
+        feedback:[{type:String}]
       },
     ],
   },

@@ -17,6 +17,45 @@ lemmatizer = WordNetLemmatizer()
 stop_words = set(stopwords.words('english'))
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
+def extract_keywords(text):
+    tokens = word_tokenize(text.lower())
+    keywords = [lemmatizer.lemmatize(w) for w in tokens if w.isalnum() and w not in stop_words]
+    return set(keywords)
+
+def generate_detailed_feedback(student_text, reference_text, score, topic):
+    ref_keywords = extract_keywords(reference_text)
+    stud_keywords = extract_keywords(student_text)
+
+    matched = ref_keywords & stud_keywords
+    missing = ref_keywords - stud_keywords
+    extra = stud_keywords - ref_keywords
+
+    feedback_points = []
+
+    # Strength-based feedback
+    if score >= 4.5:
+        feedback_points.append("✅ Excellent understanding of the topic.")
+    elif score >= 3.0:
+        feedback_points.append("✅ Good attempt. You captured several important points.")
+    elif score > 0:
+        feedback_points.append("⚠️ The answer is partially correct but misses key areas.")
+    else:
+        feedback_points.append("❌ The answer does not address the expected concepts.")
+
+    # Keyword analysis
+    if matched:
+        feedback_points.append(f"✔️ Correctly mentioned: {', '.join(sorted(matched)[:5])}.")
+    if missing:
+        feedback_points.append(f"❌ Missing key concepts: {', '.join(sorted(missing)[:5])}.")
+    if extra:
+        feedback_points.append(f"📝 Contains irrelevant information: {', '.join(sorted(extra)[:3])}.")
+
+    # Suggestion
+    feedback_points.append("📌 Focus more on concepts like: " + ', '.join(sorted(ref_keywords)[:3]) + ".")
+
+    return feedback_points
+
+
 def preprocess(text):
     try:
         tokens = word_tokenize(text.lower())
@@ -110,14 +149,18 @@ def evaluate(student_file, answer_key):
                     similarity = 0.0
                     topic = "Scoring Error"
 
-            results.append({
-                "question": idx,
-                "score": score,
-                "similarity": similarity,
-                "topic": topic,
-                "student_answer": stud,
-                "reference_answer": ref
-            })
+                feedback = generate_detailed_feedback(clean_stud, clean_ref, score, topic)
+
+                results.append({
+                    "question": idx,
+                    "score": score,
+                    "similarity": similarity,
+                    "topic": topic,
+                    "student_answer": stud,
+                    "reference_answer": ref,
+                    "feedback": feedback
+                })
+
 
         # Handle question count mismatch
         if len(student_answers) != len(reference_answers):

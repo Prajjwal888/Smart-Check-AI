@@ -1,174 +1,112 @@
-import { useState } from 'react';
-import { MessageSquare, BarChart2, Calendar } from 'lucide-react';
-import { useAppContext } from '../../context/AppContext';
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-export default function StudentFeedback() {
-  const [selectedSubject, setSelectedSubject] = useState('all');
+export default function StudentSubmissionFeedback() {
+  const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const feedbackData = [
-    {
-      id: '1',
-      subject: 'Mathematics',
-      assignment: 'Calculus Quiz 3',
-      date: '2025-04-15',
-      score: 92,
-      strengths: [
-        'Excellent understanding of derivatives',
-        'Clear step-by-step problem solving',
-        'Good application of chain rule'
-      ],
-      improvements: [
-        'Review integration techniques',
-        'Practice more complex problems'
-      ],
-      teacherComments: 'Great work on derivatives! To improve further, focus on integration problems, especially those involving trigonometric functions.'
-    },
-    {
-      id: '2',
-      subject: 'Physics',
-      assignment: 'Forces Lab Report',
-      date: '2025-04-12',
-      score: 88,
-      strengths: [
-        'Well-structured experiment methodology',
-        'Accurate data collection',
-        'Good analysis of results'
-      ],
-      improvements: [
-        'Include more error analysis',
-        'Expand on theoretical background'
-      ],
-      teacherComments: 'Your lab report shows good experimental technique. Consider adding more discussion about potential sources of error and their impact on results.'
-    },
-    {
-      id: '3',
-      subject: 'English',
-      assignment: 'Literary Analysis Essay',
-      date: '2025-04-10',
-      score: 85,
-      strengths: [
-        'Strong thesis statement',
-        'Good use of textual evidence',
-        'Clear writing style'
-      ],
-      improvements: [
-        'Develop analysis further',
-        'Include more critical perspectives'
-      ],
-      teacherComments: 'Your essay demonstrates good analytical skills. To improve, try incorporating more diverse critical perspectives and deeper analysis of literary devices.'
+  useEffect(() => {
+    async function fetchSubmissions() {
+      try {
+        const res = await axios.get(
+          "https://smart-check-ai-backend.onrender.com/api/student/getSubmissions",
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        setSubmissions(res.data.submissions || []);
+      } catch (err) {
+        // Optionally handle error
+      } finally {
+        setLoading(false);
+      }
     }
-  ];
+    fetchSubmissions();
+  }, []);
 
-  const filteredFeedback = selectedSubject === 'all'
-    ? feedbackData
-    : feedbackData.filter(f => f.subject.toLowerCase() === selectedSubject.toLowerCase());
-
-  const averageScore = feedbackData.reduce((acc, curr) => acc + curr.score, 0) / feedbackData.length;
+  if (loading) return <div>Loading...</div>;
+  if (!submissions.length) return <div>No feedback found.</div>;
 
   return (
     <div className="animate-fade-in">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Feedback & Progress</h1>
-        <p className="text-gray-600 mt-1">Track your academic progress and view teacher feedback</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Average Score</p>
-              <p className="text-2xl font-bold text-primary-600">{averageScore.toFixed(1)}%</p>
-            </div>
-            <BarChart2 className="h-8 w-8 text-primary-500" />
-          </div>
-        </div>
-
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Assignments</p>
-              <p className="text-2xl font-bold text-primary-600">{feedbackData.length}</p>
-            </div>
-            <MessageSquare className="h-8 w-8 text-primary-500" />
-          </div>
-        </div>
-
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Latest Feedback</p>
-              <p className="text-2xl font-bold text-primary-600">
-                {new Date(feedbackData[0].date).toLocaleDateString()}
-              </p>
-            </div>
-            <Calendar className="h-8 w-8 text-primary-500" />
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-6">
-        <select
-          value={selectedSubject}
-          onChange={(e) => setSelectedSubject(e.target.value)}
-          className="form-input w-full md:w-auto"
+      <h2 className="text-xl font-bold mb-4">All Assignment Feedback</h2>
+      {submissions.map((submission, sIdx) => (
+        <div
+          key={submission._id || sIdx}
+          className="mb-8 p-4 border rounded-lg bg-gray-100"
         >
-          <option value="all">All Subjects</option>
-          <option value="mathematics">Mathematics</option>
-          <option value="physics">Physics</option>
-          <option value="english">English</option>
-        </select>
-      </div>
-
-      <div className="space-y-6">
-        {filteredFeedback.map((feedback) => (
-          <div key={feedback.id} className="card p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900">{feedback.assignment}</h3>
-                <p className="text-sm text-gray-500">{feedback.subject} • {feedback.date}</p>
-              </div>
-              <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                {feedback.score}%
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <h4 className="text-sm font-medium text-green-800 mb-2">Strengths</h4>
-                <ul className="space-y-1">
-                  {feedback.strengths.map((strength, index) => (
-                    <li key={index} className="flex items-start">
-                      <div className="rounded-full bg-green-200 p-1 mr-2 mt-0.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                      </div>
-                      <span className="text-sm text-gray-600">{strength}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-medium text-amber-800 mb-2">Areas for Improvement</h4>
-                <ul className="space-y-1">
-                  {feedback.improvements.map((improvement, index) => (
-                    <li key={index} className="flex items-start">
-                      <div className="rounded-full bg-amber-200 p-1 mr-2 mt-0.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
-                      </div>
-                      <span className="text-sm text-gray-600">{improvement}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Teacher Comments</h4>
-              <p className="text-sm text-gray-600">{feedback.teacherComments}</p>
-            </div>
+          <h3 className="text-lg font-semibold mb-2">
+            Assignment:{" "}
+            {submission.assignmentTitle ||
+              submission.assignmentId?.title ||
+              `#${sIdx + 1}`}
+          </h3>
+          <div className="mb-2">
+            <strong>Grade:</strong> {submission.grade ?? "Not graded yet"}
           </div>
-        ))}
-      </div>
+          <div className="mb-2">
+            <strong>Status:</strong> {submission.status}
+          </div>
+          <div className="mb-2">
+            <strong>Plagiarism Score:</strong>{" "}
+            {submission.plagiarismScore ?? "N/A"}
+          </div>
+
+          <h4 className="text-md font-semibold mt-4 mb-2">
+            Per-Question Feedback:
+          </h4>
+          <div className="space-y-4">
+            {submission.results?.length ? (
+              submission.results.map((result, idx) => (
+                <div key={idx} className="p-4 border rounded bg-white">
+                  <div className="flex justify-between items-center mb-2">
+                    <div>
+                      <span className="font-semibold">
+                        Question {result.question}
+                      </span>
+                      {result.topic && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          ({result.topic})
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm">
+                      <span className="mr-2 font-medium">Score:</span>
+                      {result.score}
+                      <span className="ml-4 mr-2 font-medium">Similarity:</span>
+                      {result.similarity}%
+                    </div>
+                  </div>
+                  <div className="mb-2">
+                    <span className="font-medium text-green-700">
+                      Your Answer:
+                    </span>
+                    <div className="bg-gray-50 p-2 rounded border mt-1 text-gray-700">
+                      {result.student_answer || (
+                        <span className="italic text-gray-400">No answer</span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-700">
+                      Reference Answer:
+                    </span>
+                    <div className="bg-gray-50 p-2 rounded border mt-1 text-gray-700">
+                      {result.reference_answer}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="italic text-gray-500">
+                No question results available.
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
