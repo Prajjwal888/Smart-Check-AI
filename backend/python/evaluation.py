@@ -7,7 +7,7 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-
+import os
 # Download necessary NLTK data
 nltk.download('punkt', quiet=True)
 nltk.download('stopwords', quiet=True)
@@ -15,7 +15,8 @@ nltk.download('wordnet', quiet=True)
 
 lemmatizer = WordNetLemmatizer()
 stop_words = set(stopwords.words('english'))
-model = SentenceTransformer("all-MiniLM-L6-v2")
+hf_token = os.getenv("HUGGINGFACE_TOKEN")
+model = SentenceTransformer("all-MiniLM-L6-v2", use_auth_token=hf_token)
 
 def extract_keywords(text):
     tokens = word_tokenize(text.lower())
