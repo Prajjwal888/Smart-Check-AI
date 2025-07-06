@@ -15,8 +15,9 @@ nltk.download('wordnet', quiet=True)
 
 lemmatizer = WordNetLemmatizer()
 stop_words = set(stopwords.words('english'))
-hf_token = os.getenv("HUGGINGFACE_TOKEN")
-model = SentenceTransformer("all-MiniLM-L6-v2", use_auth_token=hf_token)
+# hf_token = os.getenv("HUGGINGFACE_TOKEN")
+# model = SentenceTransformer("all-MiniLM-L6-v2", use_auth_token=hf_token)
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
 def extract_keywords(text):
     tokens = word_tokenize(text.lower())
