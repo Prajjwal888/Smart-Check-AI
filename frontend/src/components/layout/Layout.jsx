@@ -14,7 +14,7 @@ export default function Layout({ userRole }) {
     async function loadData() {
       try {
         const response = await axios.get(
-          "https://smart-check-ai-backend.onrender.com/getProfile",
+          `${import.meta.env.VITE_BACKEND_URL}/getProfile`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

@@ -24,21 +24,18 @@ export default function TeacherDashboard() {
         // Make concurrent requests with axios and async/await
         const [subsRes, assignsRes] = await Promise.all([
           axios.get(
-            "https://smart-check-ai-backend.onrender.com/api/recentSubmissions",
+            `${import.meta.env.VITE_BACKEND_URL}/api/recentSubmissions`,
             {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
               },
             }
           ),
-          axios.get(
-            "https://smart-check-ai-backend.onrender.com/api/getAssignments",
-            {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-              },
-            }
-          ),
+          axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/getAssignments`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }),
         ]);
         // console.log(assignsRes.data.assignments);
         setRecentSubmissions(subsRes.data);

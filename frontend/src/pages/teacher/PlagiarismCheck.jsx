@@ -20,7 +20,7 @@ export default function PlagiarismCheck() {
       setError(null);
       try {
         const res = await axios.get(
-          "https://smart-check-ai-backend.onrender.com/api/getAssignments",
+          `${import.meta.env.VITE_BACKEND_URL}/api/getAssignments`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -50,7 +50,9 @@ export default function PlagiarismCheck() {
       setError(null);
       try {
         const res = await axios.get(
-          `https://smart-check-ai-backend.onrender.com/api/getSubmissions/${selectedAssignment}`,
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/getSubmissions/${selectedAssignment}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -78,7 +80,9 @@ export default function PlagiarismCheck() {
 
     try {
       const res = await axios.post(
-        `https://smart-check-ai-backend.onrender.com/api/checkPlagiarism/${selectedAssignment}`,
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/checkPlagiarism/${selectedAssignment}`,
         {},
         {
           headers: {

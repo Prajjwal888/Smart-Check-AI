@@ -30,7 +30,7 @@ export default function AnswerEvaluation() {
       setError(null);
       try {
         const res = await axios.get(
-          "https://smart-check-ai-backend.onrender.com/api/getAssignments",
+          `${import.meta.env.VITE_BACKEND_URL}/api/getAssignments`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -61,7 +61,9 @@ export default function AnswerEvaluation() {
       setError(null);
       try {
         const res = await axios.get(
-          `https://smart-check-ai-backend.onrender.com/api/getSubmissions/${selectedAssignment}`,
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/getSubmissions/${selectedAssignment}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -98,7 +100,9 @@ export default function AnswerEvaluation() {
     // console.log(selectedAssignment);
     try {
       await axios.post(
-        `https://smart-check-ai-backend.onrender.com/api/uploadAnswerKey/${selectedAssignment}`,
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/uploadAnswerKey/${selectedAssignment}`,
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -121,14 +125,18 @@ export default function AnswerEvaluation() {
     setError(null);
     try {
       await axios.post(
-        `https://smart-check-ai-backend.onrender.com/api/evaluate/${selectedAssignment}`,
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/evaluate/${selectedAssignment}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       // Refresh submissions after evaluation
       const res = await axios.get(
-        `https://smart-check-ai-backend.onrender.com/api/getSubmissions/${selectedAssignment}`,
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/getSubmissions/${selectedAssignment}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

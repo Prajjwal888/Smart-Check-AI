@@ -24,7 +24,7 @@ export default function Assignments() {
     try {
       // Fetch assignments
       const assignmentsRes = await axios.get(
-        "https://smart-check-ai-backend.onrender.com/api/student/getAssignments",
+        `${import.meta.env.VITE_BACKEND_URL}/api/student/getAssignments`,
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }
@@ -32,7 +32,7 @@ export default function Assignments() {
 
       // Fetch submissions for these assignments
       const submissionsRes = await axios.get(
-        "https://smart-check-ai-backend.onrender.com/api/student/getSubmissions",
+        `${import.meta.env.VITE_BACKEND_URL}/api/student/getSubmissions`,
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }
@@ -83,7 +83,7 @@ export default function Assignments() {
       setSuccess(null);
 
       await axios.post(
-        "https://smart-check-ai-backend.onrender.com/api/student/submitAssignment",
+        `${import.meta.env.VITE_BACKEND_URL}/api/student/submitAssignment`,
         formData,
         {
           headers: {

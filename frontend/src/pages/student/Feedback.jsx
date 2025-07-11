@@ -9,7 +9,7 @@ export default function StudentSubmissionFeedback() {
     async function fetchSubmissions() {
       try {
         const res = await axios.get(
-          "https://smart-check-ai-backend.onrender.com/api/student/getSubmissions",
+          `${import.meta.env.VITE_BACKEND_URL}/api/student/getSubmissions`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

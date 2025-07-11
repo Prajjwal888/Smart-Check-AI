@@ -7,7 +7,13 @@ import dotenv from 'dotenv'
 dotenv.config();
 import connectDB from "./config/db.js";
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
+
 app.use(express.json());
 connectDB();
 const PORT = 5000;

@@ -17,7 +17,7 @@ export default function FeedbackAnalysis() {
   const fetchSubjects = async () => {
     try {
       const response = await axios.get(
-        "https://smart-check-ai-backend.onrender.com/api/getSubjects",
+        `${import.meta.env.VITE_BACKEND_URL}/api/getSubjects`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -35,7 +35,7 @@ export default function FeedbackAnalysis() {
   const fetchAssignments = async (subject) => {
     try {
       const response = await axios.get(
-        `https://smart-check-ai-backend.onrender.com/api/getAssignment/${subject}`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/getAssignment/${subject}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -55,7 +55,7 @@ export default function FeedbackAnalysis() {
     setError("");
     try {
       const response = await axios.post(
-        "https://smart-check-ai-backend.onrender.com/api/generateClassReport",
+        `${import.meta.env.VITE_BACKEND_URL}/api/generateClassReport`,
         {
           subject: selectedSubject,
           assignmentId,

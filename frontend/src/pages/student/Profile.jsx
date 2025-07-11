@@ -24,7 +24,7 @@ export default function StudentProfile() {
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          "https://smart-check-ai-backend.onrender.com/api/getProfile",
+          `${import.meta.env.VITE_BACKEND_URL}/api/getProfile`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

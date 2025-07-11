@@ -10,11 +10,11 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    console.log(import.meta.env.VITE_BACKEND_URL);
     // You can add validation or authentication here
     try {
       const res = await axios.post(
-        "https://smart-check-ai-backend.onrender.com/api/auth/login",
+        `${import.meta.env.VITE_BACKEND_URL}/api/auth/login`,
         {
           email: email,
           password,

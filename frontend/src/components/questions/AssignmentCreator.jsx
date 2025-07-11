@@ -18,7 +18,7 @@ export default function AssignmentCreator() {
     const fetchSubjects = async () => {
       try {
         const res = await axios.get(
-          "https://smart-check-ai-backend.onrender.com/api/getSubjects",
+          `${import.meta.env.VITE_BACKEND_URL}/api/getSubjects`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -71,7 +71,7 @@ export default function AssignmentCreator() {
     console.log(assignmentDetails.file);
     try {
       const res = await axios.post(
-        "https://smart-check-ai-backend.onrender.com/api/uploadAssignment",
+        `${import.meta.env.VITE_BACKEND_URL}/api/uploadAssignment`,
         formData,
         {
           headers: {

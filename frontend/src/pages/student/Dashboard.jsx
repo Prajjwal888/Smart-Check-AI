@@ -22,7 +22,7 @@ export default function StudentDashboard() {
       try {
         const [subsRes, assignsRes] = await Promise.all([
           axios.get(
-            "https://smart-check-ai-backend.onrender.com/api/student/getSubmissions",
+            `${import.meta.env.VITE_BACKEND_URL}/api/student/getSubmissions`,
             {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -30,7 +30,7 @@ export default function StudentDashboard() {
             }
           ),
           axios.get(
-            "https://smart-check-ai-backend.onrender.com/api/student/getAssignments",
+            `${import.meta.env.VITE_BACKEND_URL}/api/student/getAssignments`,
             {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
