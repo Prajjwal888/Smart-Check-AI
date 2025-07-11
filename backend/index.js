@@ -8,12 +8,12 @@ dotenv.config();
 import connectDB from "./config/db.js";
 const app = express();
 app.use(cors({
-  origin: "*",
+  origin: "https://smart-check-ai-frontend.vercel.app",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
-
+app.options("*", cors());
 app.use(express.json());
 connectDB();
 const PORT = 5000;
