@@ -12,7 +12,6 @@ app.use(
     origin: "*",
   })
 );
-app.options("*", cors());
 app.use(express.json());
 connectDB();
 const PORT = 5000;
