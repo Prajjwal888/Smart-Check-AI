@@ -3,13 +3,15 @@ import cors from "cors";
 import teacherRoute from "./routes/teacherRoutes.js";
 import studentRoute from "./routes/studentRoute.js";
 import authRoute from "./controllers/auth.js";
-import dotenv from 'dotenv'
+import dotenv from "dotenv";
 dotenv.config();
 import connectDB from "./config/db.js";
 const app = express();
-app.use(cors({
-  origin: "*"
-}));
+app.use(
+  cors({
+    origin: "*",
+  })
+);
 app.options("*", cors());
 app.use(express.json());
 connectDB();
@@ -23,6 +25,4 @@ app.get("/api/health", (_req, res) => {
   return res.json({ status: "OK" });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+export default app;
