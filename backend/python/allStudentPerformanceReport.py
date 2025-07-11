@@ -6,7 +6,6 @@ from sklearn.cluster import KMeans
 from sklearn.metrics.pairwise import cosine_similarity
 import re
 from collections import Counter
-import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
 class ClassPerformanceAnalyzer:
