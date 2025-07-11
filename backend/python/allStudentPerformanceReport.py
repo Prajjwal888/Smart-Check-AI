@@ -1,27 +1,64 @@
+import sys
+import json
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 from sklearn.metrics.pairwise import cosine_similarity
 import re
 from collections import Counter
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
 
 class ClassPerformanceAnalyzer:
     def __init__(self):
         self.vectorizer = TfidfVectorizer(stop_words='english', max_features=5000)
         self.cluster_model = KMeans(n_clusters=5, random_state=42)
-
-    def load_data(self, csv_path):
-        """Robust data loader with comprehensive cleaning"""
+        
+    def create_dataframe(self, submissions):
         try:
-            df = pd.read_csv(csv_path)
+            rows = []
+            for submission in submissions:
+                student = submission.get('student_name', 'Unknown')
+                for result in submission.get('results', []):
+                    rows.append({
+                        'Student Name': student,
+                        'Score/5': f"{float(result.get('score', 0)):.2f}/5",
+                        'Topic': result.get('topic', 'Unknown'),
+                        'Student Answer': result.get('student_answer', ''),
+                        'Reference Answer': result.get('reference_answer', '')
+                    })
             
-            # Validate columns
+            df = pd.DataFrame(rows)
+            df['Score'] = (
+                df['Score/5']
+                .astype(str)
+                .str.extract(r'([0-9.]+)')[0]
+                .astype(float)
+                .fillna(0)
+            )
+            text_cols = ['Student Name', 'Topic', 'Student Answer', 'Reference Answer']
+            df[text_cols] = (
+                df[text_cols]
+                .astype(str)
+                .apply(lambda x: x.str.replace('"', '').str.strip())
+                .fillna('Unknown')
+            )
+            
+            return df
+            
+        except Exception as e:
+            print(f"🚨 DataFrame creation error: {str(e)}")
+            return pd.DataFrame()
+
+    def load_data(self, csv_file):
+        try:
+            df = pd.read_csv(csv_file)
+            
             required = ['Student Name', 'Score/5', 'Topic', 'Student Answer', 'Reference Answer']
             if not set(required).issubset(df.columns):
                 missing = set(required) - set(df.columns)
                 raise ValueError(f"Missing columns: {missing}")
             
-            # Clean and convert scores
             df['Score'] = (
                 df['Score/5']
                 .astype(str)
@@ -30,7 +67,6 @@ class ClassPerformanceAnalyzer:
                 .fillna(0)
             )
             
-            # Clean text columns
             text_cols = ['Student Name', 'Topic', 'Student Answer', 'Reference Answer']
             df[text_cols] = (
                 df[text_cols]
@@ -46,11 +82,9 @@ class ClassPerformanceAnalyzer:
             return pd.DataFrame()
 
     def analyze_class_performance(self, df):
-        """Comprehensive class analysis pipeline"""
         if df.empty:
             return {"error": "No valid data to analyze"}
             
-        # 1. Overall Metrics
         overall = {
             'Average': df['Score'].mean(),
             'Max': df['Score'].max(),
@@ -61,7 +95,6 @@ class ClassPerformanceAnalyzer:
             'StdDev': df['Score'].std()
         }
 
-        # 2. Student Performance
         student_stats = (
             df.groupby('Student Name')['Score']
             .agg(['mean', 'max', 'count'])
@@ -71,7 +104,6 @@ class ClassPerformanceAnalyzer:
             .to_dict('index')
         )
 
-        # 3. Topic Analysis
         topic_stats = (
             df.groupby('Topic')['Score']
             .agg(['mean', 'count', 'std'])
@@ -82,7 +114,6 @@ class ClassPerformanceAnalyzer:
         difficult_topics = topic_stats.nsmallest(3, 'Average').to_dict('index')
         easy_topics = topic_stats.nlargest(3, 'Average').to_dict('index')
 
-        # 4. Answer Quality Analysis
         try:
             student_vec = self.vectorizer.fit_transform(df['Student Answer'])
             ref_vec = self.vectorizer.transform(df['Reference Answer'])
@@ -91,7 +122,6 @@ class ClassPerformanceAnalyzer:
             print(f"⚠️ Similarity analysis error: {str(e)}")
             df['Similarity'] = 0
 
-        # 5. Topic Clustering
         try:
             X = self.vectorizer.fit_transform(df['Topic'])
             self.cluster_model.fit(X)
@@ -111,7 +141,6 @@ class ClassPerformanceAnalyzer:
             print(f"⚠️ Clustering error: {str(e)}")
             cluster_stats = []
 
-        # 6. Common Errors (New)
         student_answers = ' '.join(df['Student Answer'].astype(str)).lower()
         reference_answers = ' '.join(df['Reference Answer'].astype(str)).lower()
         
@@ -121,7 +150,6 @@ class ClassPerformanceAnalyzer:
         student_vocab = Counter(student_words)
         reference_vocab = Counter(reference_words)
         
-        # Words students use that aren't in reference answers
         common_errors = {
             word: count for word, count in student_vocab.items()
             if word not in reference_vocab and count > 5
@@ -142,13 +170,11 @@ class ClassPerformanceAnalyzer:
         }
 
     def _get_common_terms(self, topics):
-        """Extract most frequent terms from text"""
         text = ' '.join(topics).lower()
         words = re.findall(r'\b[a-z]{3,}\b', text)
         return pd.Series(words).value_counts().index.tolist()
 
     def generate_html_report(self, analysis):
-        """Professional HTML report generator"""
         if 'error' in analysis:
             return """
             <!DOCTYPE html>
@@ -426,23 +452,47 @@ class ClassPerformanceAnalyzer:
 </html>
         """
 
-# Usage Example
-if __name__ == "__main__":
-    analyzer = ClassPerformanceAnalyzer()
-    
-    # Replace with your CSV path
-    csv_path = "/content/student_answers_sample.csv"
-    
-    # Load and analyze data
-    df = analyzer.load_data(csv_path)
-    if df.empty:
-        print("Error loading data. Please check the CSV file.")
-    else:
+def generate_performance_report_from_submissions(submissions_data):
+    try:
+        analyzer = ClassPerformanceAnalyzer()
+        df = analyzer.create_dataframe(submissions_data)
+        
+        if df.empty:
+            raise Exception("No valid data to analyze - check your input structure")
+        
         analysis = analyzer.analyze_class_performance(df)
-        html_report = analyzer.generate_html_report(analysis)
+        return analyzer.generate_html_report(analysis)
+
+    except Exception as e:
+        raise Exception(f"Report generation failed: {str(e)}")
+
+def main():
+    try:
+        input_data = json.load(sys.stdin)
+        if 'submissions' in input_data:
+            submissions_data = input_data['submissions']
+            html_report = generate_performance_report_from_submissions(submissions_data)
+            print(html_report)
+            return
+
+        if 'csv_path' in input_data:
+            csv_path = input_data['csv_path']
+            analyzer = ClassPerformanceAnalyzer()
+            df = analyzer.load_data(csv_path)
+            
+            if df.empty:
+                print(json.dumps({'error': 'Error loading data. Please check the CSV file.'}))
+                return
+            
+            analysis = analyzer.analyze_class_performance(df)
+            html_report = analyzer.generate_html_report(analysis)
+            print(html_report)
+            return
+        print(json.dumps({'error': 'Invalid input format. Expected submissions or csv_path.'}))
         
-        # Save report
-        with open("class_performance_report.html", "w", encoding="utf-8") as f:
-            f.write(html_report)
-        
-        print("Report generated successfully: class_performance_report.html")
+    except Exception as e:
+        print(json.dumps({'error': str(e)}), file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
