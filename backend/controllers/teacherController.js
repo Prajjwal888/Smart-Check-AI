@@ -101,7 +101,7 @@ const checkAssignmentPlagiarism = async (req, res) => {
     // console.log(submissions);
     // Call Python API
     const response = await axios.post(
-      "https://smart-check-ai-python.onrender.com/checkPlagiarism",
+      `${process.env.PYTHON_SCRIPT_URL}/checkPlagiarism`,
       {
         file_urls: submissions.map((sub) => sub.fileUrl),
         threshold: PLAGIARISM_THRESHOLD,
@@ -217,7 +217,7 @@ const evaluate = async (req, res) => {
 
     // Step 3: Send to FastAPI
     const fastapiResponse = await axios.post(
-      "https://smart-check-ai-python.onrender.com/evaluate",
+      `${process.env.PYTHON_SCRIPT_URL}/evaluate`,
       {
         file_urls,
         answer_key: assignment.answerKeyUrl,
@@ -363,7 +363,7 @@ const generateClassPerformance = async (req, res) => {
     };
     // console.log(reportData);
     const response = await axios.post(
-      "https://smart-check-ai-python.onrender.com/generatePerformanceReport",
+      `${process.env.PYTHON_SCRIPT_URL}/generatePerformanceReport`,
       reportData,
       {
         headers: {
